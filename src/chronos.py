@@ -2,6 +2,7 @@
 
 import cream
 import cream.ipc
+import cream.util
 
 from chronos.ui import CalendarUI
 from chronos.event import Event
@@ -65,6 +66,6 @@ class Chronos(cream.Module):
         
         
 if __name__ == '__main__':
-
+    cream.util.set_process_name('chronos')
     chronos = Chronos()
     chronos.main()
