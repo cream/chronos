@@ -1,29 +1,85 @@
 import os
+import colorsys
 from gi.repository import Gtk as gtk
 
-from chronos.ui.window import CalendarWindow
-from chronos.ui.calendar_view import CalendarView
-from chronos.ui.main_view import MainView
-from chronos.ui.event_view import EventView
+from chronos.ui.month import MonthView
+from chronos.ui.event import EventView
+from chronos.ui.tag import Tag
+
+# TODO: Move to chronos.ui.util
+def find_colors(r, g, b):
+
+    offset = 1.0/6
+    
+    hsv = colorsys.rgb_to_hsv(r, g, b)
+    
+    while True:
+        c = (hsv[0] - offset, hsv[1], hsv[2])
+        offset += 1.0/6
+        yield colorsys.hsv_to_rgb(*c)
+
 
 class CalendarUI(object):
 
     def __init__(self):
-        
-        path = os.path.join(os.path.dirname(__file__), 'calendar.glade')
-        
-        interface = gtk.Builder()
-        interface.add_from_file(path)
-        
-        self.window = CalendarWindow(interface)
-        self.calendar_view = CalendarView(interface)
-        self.main_view = MainView(interface)
-        self.event_view = EventView(interface)
 
-        self.window.calendar_view_box.add(self.calendar_view)
-        self.window.main_view_box.add(self.main_view)
-        self.window.event_view_box.add(self.event_view)      
+        self.events = {}
+        
+        interface_path = os.path.join(os.path.dirname(__file__), 'calendar.glade')
+        
+        # Load the interface data
+        self.interface = gtk.Builder()
+        self.interface.add_from_file(interface_path)
+        
+        # Retrieve the objects being used here
+        self.window = self.interface.get_object('main_window')
+        self.layout = self.interface.get_object('layout')
+        self.paned = self.interface.get_object('paned')
+        self.button_previous = self.interface.get_object('button_previous')
+        self.button_next = self.interface.get_object('button_next')
+
+        # Construct the custom interfaces
+        self.month_view = MonthView()
+        self.event_view = EventView()
+        
+        # Connect the signals
+        self.button_previous.connect('clicked', lambda *args: self.month_view.previous_month())
+        self.button_next.connect('clicked', lambda *args: self.month_view.next_month())
+        
+        # TODO: Make use of MonthViews signals!
+
+        self.paned.add1(self.month_view)
+        self.paned.add2(self.event_view)
+
+        # Display the calendars as tags
+        self.calendars = gtk.HBox()
+        self.calendars.set_spacing(1)
+        
+        colors = find_colors(.57, .72, .79)
+    
+        for tag in [Tag("Schule", (.57, .72, .79)), Tag("Feiertage", colors.next())]:
+            self.calendars.pack_start(tag, False, False, 0)
+        
+        self.layout.pack_start(self.calendars, False, False, 0)
+
+        # Show the window
+        self.window.show_all()
 
 
-        self.window.window.show_all()
+    # TODO: This does not work!
+    def add_event(self, event):
+
+        self.events[event.uid] = event
+        self.view.add_event(event)
+
+    def remove_event(self, event):
+
+        self.events.pop(event.uid)
+        self.view.remove_event(event)  
+
+    def update_event(self, event):
+
+        self.events[event.uid] = event
+        self.view.update_event(event)      
+
 

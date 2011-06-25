@@ -2,7 +2,7 @@ import time
 import cairo
 import calendar
 
-from gi.repository import Gtk as gtk, Gdk as gdk
+from gi.repository import GObject as gobject, Gtk as gtk, Gdk as gdk
 
 from cream.util.dicts import ordereddict
 
@@ -94,7 +94,13 @@ class Date(object):
 
 class MonthView(gtk.DrawingArea):
 
-    def __init__(self, interface):
+    __gtype_name__ = 'MonthView'
+    __gsignals__ = {
+        'month-changed': (gobject.SignalFlags.RUN_LAST, None, ()),
+        'day-changed': (gobject.SignalFlags.RUN_LAST, None, ())
+    }
+
+    def __init__(self):
     
         gtk.DrawingArea.__init__(self)
     
@@ -103,12 +109,7 @@ class MonthView(gtk.DrawingArea):
         self._events = {}
         
         self._grid_height = 0
-        self.grid_origin = (0, 0)
-        
-        self.next = interface.get_object('button_next')
-        self.previous = interface.get_object('button_previous')
-        self.next.connect('clicked', self.month_change_cb)
-        self.previous.connect('clicked', self.month_change_cb)        
+        self.grid_origin = (0, 0)      
         
         self.set_size_request(500, 500)
         self.set_events(self.get_events() | gdk.EventMask.BUTTON_PRESS_MASK)
@@ -148,18 +149,17 @@ class MonthView(gtk.DrawingArea):
 
         if self.event_in_current_month(event):
             self.queue_draw()
-
-
-    def month_change_cb(self, button):
-
-        self.dates = ordereddict()
-        
-        if button == self.previous:
-            self.selected_date = self.selected_date.previous_month()
-            self.queue_draw()
-        elif button == self.next:
-            self.selected_date = self.selected_date.next_month()
-            self.queue_draw()
+            
+            
+    # TODO: Remove the two following functions and use a generic 'set_month'!        
+    def previous_month(self):
+        self.selected_date = self.selected_date.previous_month()
+        self.queue_draw()
+            
+    
+    def next_month(self):
+        self.selected_date = self.selected_date.next_month()
+        self.queue_draw()
             
     
     def event_in_current_month(self, event):
@@ -215,17 +215,7 @@ class MonthView(gtk.DrawingArea):
     def grid_height(self):
         weeks = number_of_weeks(self.selected_date.year, self.selected_date.month)
         return (self._grid_height - PADDING_BOTTOM) / weeks
-                
-    
-    def do_get_preferred_width_for_height(self, height):
-        
-        return height, height
 
-        
-    def do_get_preferred_height_for_width(self, width):
-
-        return 0.8*width, 0.8*width
-        
 
     def draw(self, widget, ctx):
     

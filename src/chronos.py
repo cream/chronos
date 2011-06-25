@@ -26,7 +26,7 @@ class Chronos(cream.Module):
     
         self.calendar_ui = CalendarUI()
         
-        self.calendar_ui.window.window.connect('delete_event', lambda *x: self.quit())
+        self.calendar_ui.window.connect('delete_event', lambda *x: self.quit())
 
         
         for calendar in self.calendar.get_calendars():
