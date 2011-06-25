@@ -11,14 +11,6 @@ class MainView(gtk.VBox):
 
         self.events = {}
 
-        self.day_view_toggle = interface.get_object('day_view_toggle')
-        self.week_view_toggle = interface.get_object('week_view_toggle')
-        self.month_view_toggle = interface.get_object('month_view_toggle')
-
-        self.day_view_toggle.connect('toggled', self.view_change_cb)
-        self.week_view_toggle.connect('toggled', self.view_change_cb)
-        self.month_view_toggle.connect('toggled', self.view_change_cb)
-
         self.view = MonthView(interface)
         self.add(self.view)
 
@@ -36,12 +28,5 @@ class MainView(gtk.VBox):
     def update_event(self, event):
 
         self.events[event.uid] = event
-        self.view.update_event(event)
-
-
-    def view_change_cb(self, toggled_button):
-
-        print toggled_button
-        
-        
+        self.view.update_event(event)      
 

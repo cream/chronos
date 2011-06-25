@@ -20,7 +20,7 @@ FONT_SIZE_EVENT = 10
 COLOR = (.1, .1, .1, 1)
 COLOR_GREY = (.1, .1, .1, 0.5)
 
-PADDING = 15
+PADDING = 10
 PADDING_TOP = 5
 PADDING_BOTTOM = 5
 PADDING_LEFT = 5
@@ -100,8 +100,8 @@ class MonthView(gtk.DrawingArea):
         
         self._grid_height = 0
         
-        self.next = interface.get_object('next')
-        self.previous = interface.get_object('previous')
+        self.next = interface.get_object('button_next')
+        self.previous = interface.get_object('button_previous')
         self.next.connect('clicked', self.month_change_cb)
         self.previous.connect('clicked', self.month_change_cb)
     
@@ -110,25 +110,29 @@ class MonthView(gtk.DrawingArea):
         self.set_size_request(500, 500)
         
         self.connect('draw', self.draw)
+
         
     @property
     def events(self):
-        return self._events.itervalues()
+        """
+        Yields events in current month
+        """
+        for event in self._events.itervalues():
+            if self.event_in_current_month(event):
+                yield event
     
     def add_event(self, event):
 
         self._events[event.uid] = event
 
-        if (event.start.month == self.selected_date.month
-            or event.end.month == self.selected_date.month):
+        if self.event_in_current_month(event):
             self.queue_draw()
 
     def remove_event(self, event):
 
         self._events.pop(event.uid)
 
-        if (event.start.month == self.selected_date.month
-            or event.end.month == self.selected_date.month):
+        if self.event_in_current_month(event):
             self.queue_draw()
 
 
@@ -136,8 +140,7 @@ class MonthView(gtk.DrawingArea):
 
         self._events[event.uid] = event
 
-        if (event.start.month == self.selected_date.month
-            or event.end.month == self.selected_date.month):
+        if self.event_in_current_month(event):
             self.queue_draw()
 
 
@@ -149,6 +152,20 @@ class MonthView(gtk.DrawingArea):
         elif button == self.next:
             self.selected_date = self.selected_date.next_month()
             self.queue_draw()
+            
+    
+    def event_in_current_month(self, event):
+        
+        if event.start.month  != self.selected_date.month:
+            return False
+        elif event.end.month  != self.selected_date.month:
+            return False
+            
+        if event.start.year != self.selected_date.year:
+            return False
+        elif event.end.year != self.selected_date.year:
+            return False
+        return True
         
     
     @property
@@ -187,33 +204,13 @@ class MonthView(gtk.DrawingArea):
         ctx.rectangle(0, 0, width, height)
         ctx.fill()
         
-        used_height = self.draw_date_label(ctx, 0)
-        
-        used_height += self.draw_weekday_headers(ctx, used_height + PADDING)
+        used_height = self.draw_weekday_headers(ctx, 5)
         
         self._grid_height = height - (used_height - PADDING)
         
         self.draw_grid(ctx, used_height - PADDING)
         
         self.draw_events(ctx)
-        
-    
-    def draw_date_label(self, ctx, start_height):
-    
-        width = self.get_allocation().width
-        height = self.get_allocation().height
-        
-        ctx.set_source_rgba(*COLOR)
-        ctx.select_font_face(*FONT_BOLD)
-        ctx.set_font_size(FONT_SIZE_MONTH_YEAR)
-        
-        text = self.selected_date.strftime(MONTH_YEAR_TEMPLATE)
-        _, _, t_width, t_height = get_text_extents(ctx, text)
-        
-        ctx.move_to(width/2 - t_width/2, PADDING_TOP + t_height)
-        ctx.show_text(text)
-        
-        return PADDING_TOP + t_height
         
     
     def draw_weekday_headers(self, ctx, start_height):
@@ -235,7 +232,7 @@ class MonthView(gtk.DrawingArea):
             ctx.show_text(dayname)
             
         
-        return y
+        return y + 2*PADDING
         
     
     def draw_grid(self, ctx, start_height):
@@ -282,9 +279,6 @@ class MonthView(gtk.DrawingArea):
         height = calculate_event_height(self.events, ctx)
     
         for event in self.events:
-            if (event.start.month != self.selected_date.month 
-                and event.end.month != self.selected_date.month):
-                continue
         
             dates = self._get_dates_for_event(event)
             
