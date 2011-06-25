@@ -2,7 +2,7 @@ import time
 import cairo
 import calendar
 
-from gi.repository import Gtk as gtk
+from gi.repository import Gtk as gtk, Gdk as gdk
 
 from cream.util.dicts import ordereddict
 
@@ -61,11 +61,13 @@ def roundedrect(ctx, x, y, w, h, r = 15, left=True, right=True):
 
 class Date(object):
 
-    def __init__(self, dtime, x, y):
+    def __init__(self, dtime, x, y, outside):
     
         self.datetime = dtime
         self.x = x
         self.y = y
+        self.outside = outside
+        self.selected = False
         self.first_day_of_week = self.datetime.weekday() == 0
         self.last_day_of_week = self.datetime.weekday() == 6
         
@@ -94,22 +96,25 @@ class MonthView(gtk.DrawingArea):
 
     def __init__(self, interface):
     
+        gtk.DrawingArea.__init__(self)
+    
         self.selected_date = datetime.now()
         self.dates = ordereddict()
         self._events = {}
         
         self._grid_height = 0
+        self.grid_origin = (0, 0)
         
         self.next = interface.get_object('button_next')
         self.previous = interface.get_object('button_previous')
         self.next.connect('clicked', self.month_change_cb)
-        self.previous.connect('clicked', self.month_change_cb)
-    
-        gtk.DrawingArea.__init__(self)
+        self.previous.connect('clicked', self.month_change_cb)        
         
         self.set_size_request(500, 500)
+        self.set_events(self.get_events() | gdk.EventMask.BUTTON_PRESS_MASK)
         
         self.connect('draw', self.draw)
+        self.connect('button-press-event', self.button_press_cb)
 
         
     @property
@@ -120,6 +125,7 @@ class MonthView(gtk.DrawingArea):
         for event in self._events.itervalues():
             if self.event_in_current_month(event):
                 yield event
+                
     
     def add_event(self, event):
 
@@ -146,6 +152,8 @@ class MonthView(gtk.DrawingArea):
 
     def month_change_cb(self, button):
 
+        self.dates = ordereddict()
+        
         if button == self.previous:
             self.selected_date = self.selected_date.previous_month()
             self.queue_draw()
@@ -166,6 +174,36 @@ class MonthView(gtk.DrawingArea):
         elif event.end.year != self.selected_date.year:
             return False
         return True
+
+    
+    def button_press_cb(self, widget, event):
+        
+        obj = self.get_object_at_coords(event.x, event.y)
+        
+        if isinstance(obj, Date):
+            self.selected_date = obj.datetime
+        
+        self.queue_draw()
+        
+    
+    def get_object_at_coords(self, x, y):
+    
+        x0 = self.grid_origin[0]
+        y0 = self.grid_origin[1]
+        if x < x0 or y < y0:
+            return None
+        
+        ret = None
+        for date in self.dates.itervalues():
+            if (x > date.x and x < date.x + self.grid_width 
+                and y > date.y and y < date.y + self.grid_height):
+                date.selected = True
+                ret = date
+            else:
+                date.selected = False
+        
+        return ret
+        
         
     
     @property
@@ -191,8 +229,6 @@ class MonthView(gtk.DrawingArea):
 
     def draw(self, widget, ctx):
     
-        self.dates = ordereddict()
-    
         width = self.get_allocation().width
         height = self.get_allocation().height
         
@@ -206,9 +242,11 @@ class MonthView(gtk.DrawingArea):
         
         used_height = self.draw_weekday_headers(ctx, 5)
         
-        self._grid_height = height - (used_height - PADDING)
+        self.grid_origin = (PADDING_LEFT, used_height + PADDING)
         
-        self.draw_grid(ctx, used_height - PADDING)
+        self._grid_height = height - self.grid_origin[1]
+        
+        self.draw_grid(ctx, self.grid_origin[1])
         
         self.draw_events(ctx)
         
@@ -232,7 +270,7 @@ class MonthView(gtk.DrawingArea):
             ctx.show_text(dayname)
             
         
-        return y + 2*PADDING
+        return y
         
     
     def draw_grid(self, ctx, start_height):
@@ -243,7 +281,7 @@ class MonthView(gtk.DrawingArea):
         
         # draw vertical lines
         for column in range(8):
-            x = PADDING_LEFT + column * (self.grid_width - 1)
+            x = self.grid_origin[0] + column * (self.grid_width - 1)
             self.draw_line(ctx, x, y, x, height - PADDING_BOTTOM)
         
         year, month = self.selected_date.year, self.selected_date.month
@@ -252,19 +290,23 @@ class MonthView(gtk.DrawingArea):
             y2 = y + row*self.grid_height
             
             # draw horizontal lines
-            self.draw_line(ctx, PADDING_LEFT, y2, width - PADDING_RIGHT, y2)
+            self.draw_line(ctx, self.grid_origin[0], y2, width - PADDING_RIGHT, y2)
             
+            # draw the dates
             for column in range(7):
-                x = PADDING_LEFT + column * ( self.grid_width - 1)
+                x = self.grid_origin[0] + column * ( self.grid_width - 1)
                 try:
                     d = monthdates.next()
-                    y3 = self.draw_day(ctx, d.day, x + self.grid_width, y2, d.month != month)
-                    self.dates[d] = Date(d, x, y3)
+                    if not d in self.dates:
+                        self.dates[d] = Date(d, x, None, d.month != month)
+                    y3 = self.draw_day(ctx, self.dates[d], x + self.grid_width, y2)
+                    self.dates[d].x = x
+                    self.dates[d].y = y3
                 except StopIteration:
                     break
         
         # draw bottom line
-        self.draw_line(ctx, PADDING_LEFT, y2 + self.grid_height, 
+        self.draw_line(ctx, self.grid_origin[0], y2 + self.grid_height, 
                         width - PADDING_RIGHT, y2 + self.grid_height)
         
         # map the events to the dates
@@ -366,7 +408,7 @@ class MonthView(gtk.DrawingArea):
         ctx.stroke()
         
         
-    def draw_day(self, ctx, day, x, y, outside):
+    def draw_day(self, ctx, date, x, y):
         """
         Draw the day into the right upper corner of each box. x and y specify
         the upper right corner coordinates.
@@ -377,15 +419,20 @@ class MonthView(gtk.DrawingArea):
         ctx.select_font_face(*FONT_NORMAL)
         ctx.set_font_size(FONT_SIZE_DAY)
         
-        day = str(day)
+        day = str(date.datetime.day)
         _, _, t_width, t_height = get_text_extents(ctx, day)
         x1 = x - t_width - PADDING_DAY
         y1 = y + t_height + PADDING_DAY
         ctx.move_to(x1, y1)
         ctx.show_text(day)
         
-        if outside:
+        if date.outside:
             ctx.set_source_rgba(0, 0, 0, 0.1)
+            x2 = x - self.grid_width
+            ctx.rectangle(x2, y, self.grid_width-1, self.grid_height)
+            ctx.fill()
+        if date.selected:
+            ctx.set_source_rgba(0, 0, 45, 0.1)
             x2 = x - self.grid_width
             ctx.rectangle(x2, y, self.grid_width-1, self.grid_height)
             ctx.fill()
