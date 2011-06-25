@@ -3,7 +3,7 @@ import colorsys
 from gi.repository import Gtk as gtk
 
 from chronos.ui.month import MonthView
-from chronos.ui.event import EventView
+from chronos.ui.day import DayView
 from chronos.ui.tag import Tag
 
 # TODO: Move to chronos.ui.util
@@ -40,7 +40,7 @@ class CalendarUI(object):
 
         # Construct the custom interfaces
         self.month_view = MonthView()
-        self.event_view = EventView()
+        self.day_view = DayView()
         
         # Connect the signals
         self.button_previous.connect('clicked', lambda *args: self.month_view.previous_month())
@@ -49,7 +49,7 @@ class CalendarUI(object):
         # TODO: Make use of MonthViews signals!
 
         self.paned.add1(self.month_view)
-        self.paned.add2(self.event_view)
+        self.paned.add2(self.day_view)
 
         # Display the calendars as tags
         self.calendars = gtk.HBox()
