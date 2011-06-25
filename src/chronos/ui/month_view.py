@@ -325,7 +325,10 @@ class MonthView(gtk.DrawingArea):
                                            columns * self.grid_width)
             
             # draw the title in the first row
-            columns = 7 - start.datetime.weekday() 
+            if (end.datetime - start.datetime).days >= 6:
+                columns = 7
+            else:
+                columns = end.datetime.weekday() + 1
             self._draw_event_title(ctx, event, start.x, y[0], 
                                    columns * self.grid_width)       
     
