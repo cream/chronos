@@ -7,11 +7,11 @@ from chronos.ui import CalendarUI
 from chronos.event import Event
 
 
-class Calendar(cream.Module):
+class Chronos(cream.Module):
 
     def __init__(self):
     
-        cream.Module.__init__(self, 'org.cream.Calendar')
+        cream.Module.__init__(self, 'org.cream.Chronos')
         
         self.events = {}
 
@@ -66,5 +66,5 @@ class Calendar(cream.Module):
         
 if __name__ == '__main__':
 
-    calendar = Calendar()
-    calendar.main()
+    chronos = Chronos()
+    chronos.main()
