@@ -9,7 +9,7 @@ class MainView(gtk.VBox):
 
         gtk.VBox.__init__(self)
 
-        self.events = []
+        self.events = {}
 
         self.day_view_toggle = interface.get_object('day_view_toggle')
         self.week_view_toggle = interface.get_object('week_view_toggle')
@@ -25,12 +25,12 @@ class MainView(gtk.VBox):
 
     def add_event(self, event):
 
-        self.events.append(event)
+        self.events[event.uid] = event
         self.view.add_event(event)
 
     def remove_event(self, event):
 
-        self.events.remove(event)
+        self.events.pop(event.uid)
         self.view.remove_event(event)  
 
     def view_change_cb(self, toggled_button):

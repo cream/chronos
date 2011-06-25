@@ -13,7 +13,7 @@ class Calendar(cream.Module):
     
         cream.Module.__init__(self, 'org.cream.Calendar')
         
-        self.events = []
+        self.events = {}
 
         self.calendar = cream.ipc.get_object('org.cream.PIM', '/org/cream/PIM/Calendar')
         self.calendar.search_for_calendars()
@@ -36,15 +36,14 @@ class Calendar(cream.Module):
     def add_event(self, uid, event):
         
         event = Event(**event)
-        self.events.append(event)
+        self.events[uid] = event
 
         self.calendar_ui.main_view.add_event(event)
         
         
     def remove_event(self, uid, event):
 
-        event = Event(**event)
-        self.events.remove(event)
+        self.events.pop(uid)
 
         self.calendar_ui.main_view.remove_event(event)
 

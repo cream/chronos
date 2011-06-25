@@ -96,7 +96,7 @@ class MonthView(gtk.DrawingArea):
     
         self.selected_date = datetime.now()
         self.dates = ordereddict()
-        self.events = []
+        self._events = {}
         
         self._grid_height = 0
         
@@ -111,10 +111,13 @@ class MonthView(gtk.DrawingArea):
         
         self.connect('draw', self.draw)
         
+    @property
+    def events(self):
+        return self._events.itervalues()
     
     def add_event(self, event):
 
-        self.events.append(event)
+        self._events[event.uid] = event
 
         if (event.start.month == self.selected_date.month
             or event.end.month == self.selected_date.month):
@@ -122,7 +125,7 @@ class MonthView(gtk.DrawingArea):
 
     def remove_event(self, event):
 
-        self.events.remove(event)
+        self._events.pop(event.uid)
 
         if (event.start.month == self.selected_date.month
             or event.end.month == self.selected_date.month):
