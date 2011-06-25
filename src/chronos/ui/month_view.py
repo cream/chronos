@@ -406,7 +406,7 @@ class MonthView(gtk.DrawingArea):
             j = self.dates.values().index(self.dates[event.end.as_date])
         
             return self.dates.values()[i:j+1]
-        except:
+        except KeyError:
             return []
         
 
