@@ -25,7 +25,7 @@ class CalendarUI(object):
 
         self.events = {}
         
-        interface_path = os.path.join(os.path.dirname(__file__), 'calendar.glade')
+        interface_path = os.path.join(os.path.dirname(__file__), 'calendar.ui')
         
         # Load the interface data
         self.interface = gtk.Builder()
