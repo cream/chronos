@@ -21,6 +21,7 @@ class Calendar(cream.Module):
         self.calendar.connect_to_signal('calendar_added', self.add_calendar)
         self.calendar.connect_to_signal('event_added', self.add_event)
         self.calendar.connect_to_signal('event_removed', self.remove_event)
+        self.calendar.connect_to_signal('event_updated', self.update_event)
     
         self.calendar_ui = CalendarUI()
         
@@ -48,9 +49,14 @@ class Calendar(cream.Module):
         self.calendar_ui.main_view.remove_event(event)
 
 
-    def on_event_updated(self, uid, event):
-        pass
-        
+    def update_event(self, uid, event):
+
+        event = Event(**event)
+        self.events[uid] = event
+
+        self.calendar_ui.main_view.update_event(event)
+
+
     def add_calendar(self, uid, calendar):
     
         self.calendar_ui.calendar_view.add_calendar(calendar)

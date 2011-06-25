@@ -132,6 +132,15 @@ class MonthView(gtk.DrawingArea):
             self.queue_draw()
 
 
+    def update_event(self, event):
+
+        self._events[event.uid] = event
+
+        if (event.start.month == self.selected_date.month
+            or event.end.month == self.selected_date.month):
+            self.queue_draw()
+
+
     def month_change_cb(self, button):
 
         if button == self.previous:

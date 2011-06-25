@@ -33,6 +33,12 @@ class MainView(gtk.VBox):
         self.events.pop(event.uid)
         self.view.remove_event(event)  
 
+    def update_event(self, event):
+
+        self.events[event.uid] = event
+        self.view.update_event(event)
+
+
     def view_change_cb(self, toggled_button):
 
         print toggled_button
