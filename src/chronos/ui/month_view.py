@@ -113,15 +113,24 @@ class MonthView(gtk.DrawingArea):
         
     
     def add_event(self, event):
-    
-        if (event.start.month == self.selected_date.month 
+
+        self.events.append(event)
+
+        if (event.start.month == self.selected_date.month
             or event.end.month == self.selected_date.month):
-            self.events.append(event)
-            self.queue_draw()        
-        
-    
+            self.queue_draw()
+
+    def remove_event(self, event):
+
+        self.events.remove(event)
+
+        if (event.start.month == self.selected_date.month
+            or event.end.month == self.selected_date.month):
+            self.queue_draw()
+
+
     def month_change_cb(self, button):
-    
+
         if button == self.previous:
             self.selected_date = self.selected_date.previous_month()
             self.queue_draw()
@@ -261,6 +270,9 @@ class MonthView(gtk.DrawingArea):
         height = calculate_event_height(self.events, ctx)
     
         for event in self.events:
+            if (event.start.month != self.selected_date.month 
+                and event.end.month != self.selected_date.month):
+                continue
         
             dates = self._get_dates_for_event(event)
             
