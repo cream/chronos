@@ -8,6 +8,8 @@ from chronos.ui.tag import Tag
 
 from chronos.utils import datetime
 
+MONTH_YEAR_TEMPLATE = '<span weight="bold" size="x-large">%B %Y</span>'
+
 # TODO: Move to chronos.ui.util
 def find_colors(r, g, b):
 
@@ -38,8 +40,12 @@ class CalendarUI(object):
         self.window = self.interface.get_object('main_window')
         self.layout = self.interface.get_object('layout')
         self.paned = self.interface.get_object('paned')
+        self.month_year_label = self.interface.get_object('month_year')
         self.button_previous = self.interface.get_object('button_previous')
         self.button_next = self.interface.get_object('button_next')
+
+        # Set the current year and month
+        self.month_year_label.set_markup(self.date.strftime(MONTH_YEAR_TEMPLATE))
 
         # Construct the custom interfaces
         self.month_view = MonthView(self.date)
@@ -69,6 +75,8 @@ class CalendarUI(object):
 
         self.date = date
         self.month_view.set_date(self.date)
+
+        self.month_year_label.set_markup(self.date.strftime(MONTH_YEAR_TEMPLATE))
 
 
     # TODO: This does not work!
