@@ -66,7 +66,7 @@ class CalendarUI(object):
     def add_event(self, event):
 
         self.events[event.uid] = event
-        self.view.add_event(event)
+        self.month_view.add_event(event)
 
     def remove_event(self, event):
 
@@ -80,7 +80,10 @@ class CalendarUI(object):
 
     def add_calendar(self, calendar):
 
-        tag = Tag(calendar['name'], self.colors.next())
+        color = self.colors.next()
+        tag = Tag(calendar['name'], color)
         tag.show()
         self.calendars.pack_start(tag, False, False, 0)
+
+        return color
 

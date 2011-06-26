@@ -324,7 +324,7 @@ class MonthView(gtk.DrawingArea):
             end = dates.pop()
 
             # draw start and end
-            ctx.set_source_rgba(0, 45, 0, 0.5)
+            ctx.set_source_rgb(*event.color)
             roundedrect(ctx, start.x, y[0], self.grid_width, height, right=False)
             roundedrect(ctx, end.x, y[-1], self.grid_width, height, left=False)
             ctx.fill()
@@ -333,7 +333,7 @@ class MonthView(gtk.DrawingArea):
             for date in dates:
                 if date.first_day_of_week:
                     row += 1
-                ctx.set_source_rgba(0, 45, 0, 0.5)
+                ctx.set_source_rgb(*event.color)
                 if date.first_day_of_week:
                     roundedrect(ctx, date.x, y[row], self.grid_width, height, right=False)
                 elif date.last_day_of_week:
@@ -364,7 +364,7 @@ class MonthView(gtk.DrawingArea):
         
         y = calculate_y_coords(event, [date], height)[0]
             
-        ctx.set_source_rgba(0, 45, 0, 0.5)
+        ctx.set_source_rgb(*event.color)
         roundedrect(ctx, date.x, y, self.grid_width, height)
         ctx.fill()
             

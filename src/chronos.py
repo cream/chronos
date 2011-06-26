@@ -15,6 +15,7 @@ class Chronos(cream.Module):
         cream.Module.__init__(self, 'org.cream.Chronos')
         
         self.events = {}
+        self.calendar_colors = {}
 
         self.calendar = cream.ipc.get_object('org.cream.PIM', '/org/cream/PIM/Calendar')
         self.calendar.search_for_calendars()
@@ -36,11 +37,13 @@ class Chronos(cream.Module):
             self.add_event(event['uid'], event)
         
     def add_event(self, uid, event):
+
+        color = self.calendar_colors[event.pop('calendar_uid')]
         
-        event = Event(**event)
+        event = Event(color=color, **event)
         self.events[uid] = event
 
-        self.calendar_ui.main_view.add_event(event)
+        self.calendar_ui.add_event(event)
         
         
     def remove_event(self, uid, event):
@@ -60,8 +63,9 @@ class Chronos(cream.Module):
 
     def add_calendar(self, uid, calendar):
 
-        self.calendar_ui.add_calendar(calendar)
+        color = self.calendar_ui.add_calendar(calendar)
 
+        self.calendar_colors[calendar['uid']] = color
 
 
 

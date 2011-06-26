@@ -3,13 +3,8 @@ from chronos.utils import datetime
 class Event(object):
     """An internal representation of an event."""
 
-    def __init__(self, uid=None,
-                       title='',
-                       description='',
-                       start=None,
-                       end=None,
-                       location=None,
-                       calendar_uid=None):
+    def __init__(self, uid, title='', description='', start=None, end=None,
+                       location=None, color=None):
 
         self.uid = uid
         self.title = title
@@ -17,7 +12,7 @@ class Event(object):
         self.start = start
         self.end = end
         self.location = location
-        self.calendar_uid = calendar_uid
+        self.color = color
 
         if isinstance(start, (float, int)):
             self.start = datetime.fromtimestamp(start)
