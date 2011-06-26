@@ -23,7 +23,7 @@ class datetime(_datetime.datetime):
         return datetime(self.year, self.month, self.day)
         
         
-    
+    @property
     def next_month(self):
         
         if self.month == 12:
@@ -43,6 +43,7 @@ class datetime(_datetime.datetime):
                          self.second, self.microsecond, self.tzinfo)
                          
     
+    @property
     def previous_month(self):
         
         if self.month == 1:

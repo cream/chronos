@@ -100,11 +100,12 @@ class MonthView(gtk.DrawingArea):
         'day-changed': (gobject.SignalFlags.RUN_LAST, None, ())
     }
 
-    def __init__(self):
+    def __init__(self, date):
     
         gtk.DrawingArea.__init__(self)
     
-        self.selected_date = datetime.now()
+        self.date = date
+
         self.dates = ordereddict()
         self._events = {}
         
@@ -150,28 +151,23 @@ class MonthView(gtk.DrawingArea):
         if self.event_in_current_month(event):
             self.queue_draw()
             
-            
-    # TODO: Remove the two following functions and use a generic 'set_month'!        
-    def previous_month(self):
-        self.selected_date = self.selected_date.previous_month()
-        self.queue_draw()
-            
     
-    def next_month(self):
-        self.selected_date = self.selected_date.next_month()
-        self.queue_draw()
-            
+    def set_date(self, date):
     
+        self.date = date
+        self.queue_draw()
+
+
     def event_in_current_month(self, event):
         
-        if event.start.month  != self.selected_date.month:
+        if event.start.month  != self.date.month:
             return False
-        elif event.end.month  != self.selected_date.month:
+        elif event.end.month  != self.date.month:
             return False
             
-        if event.start.year != self.selected_date.year:
+        if event.start.year != self.date.year:
             return False
-        elif event.end.year != self.selected_date.year:
+        elif event.end.year != self.date.year:
             return False
         return True
 
@@ -213,7 +209,7 @@ class MonthView(gtk.DrawingArea):
     
     @property
     def grid_height(self):
-        weeks = number_of_weeks(self.selected_date.year, self.selected_date.month)
+        weeks = number_of_weeks(self.date.year, self.date.month)
         return (self._grid_height - PADDING_BOTTOM) / weeks
 
 
@@ -274,7 +270,7 @@ class MonthView(gtk.DrawingArea):
             x = self.grid_origin[0] + column * (self.grid_width - 1)
             self.draw_line(ctx, x, y, x, height - PADDING_BOTTOM)
         
-        year, month = self.selected_date.year, self.selected_date.month
+        year, month = self.date.year, self.date.month
         monthdates = iter_month_dates(year, month)
         for row in range(number_of_weeks(year, month)):
             y2 = y + row*self.grid_height

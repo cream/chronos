@@ -6,6 +6,8 @@ from chronos.ui.month import MonthView
 from chronos.ui.day import DayView
 from chronos.ui.tag import Tag
 
+from chronos.utils import datetime
+
 # TODO: Move to chronos.ui.util
 def find_colors(r, g, b):
 
@@ -24,6 +26,7 @@ class CalendarUI(object):
     def __init__(self):
 
         self.events = {}
+        self.date = datetime.now()
         
         interface_path = os.path.join(os.path.dirname(__file__), 'calendar.ui')
         
@@ -39,12 +42,12 @@ class CalendarUI(object):
         self.button_next = self.interface.get_object('button_next')
 
         # Construct the custom interfaces
-        self.month_view = MonthView()
+        self.month_view = MonthView(self.date)
         self.day_view = DayView()
         
         # Connect the signals
-        self.button_previous.connect('clicked', lambda *args: self.month_view.previous_month())
-        self.button_next.connect('clicked', lambda *args: self.month_view.next_month())
+        self.button_previous.connect('clicked', self.month_change_cb)
+        self.button_next.connect('clicked', self.month_change_cb)
         
         # TODO: Make use of MonthViews signals!
 
@@ -60,6 +63,12 @@ class CalendarUI(object):
 
         # Show the window
         self.window.show_all()
+
+
+    def set_date(self, date):
+
+        self.date = date
+        self.month_view.set_date(self.date)
 
 
     # TODO: This does not work!
@@ -86,4 +95,11 @@ class CalendarUI(object):
         self.calendars.pack_start(tag, False, False, 0)
 
         return color
+
+    def month_change_cb(self, button):
+
+        if button == self.button_previous:
+            self.set_date(self.date.previous_month)
+        elif button == self.button_next:
+            self.set_date(self.date.next_month)
 
