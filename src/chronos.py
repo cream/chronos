@@ -59,12 +59,12 @@ class Chronos(cream.Module):
 
 
     def add_calendar(self, uid, calendar):
-    
-        self.calendar_ui.calendar_view.add_calendar(calendar)
-        
-        
-        
-        
+
+        self.calendar_ui.add_calendar(calendar)
+
+
+
+
 if __name__ == '__main__':
     cream.util.set_process_name('chronos')
     chronos = Chronos()

@@ -52,14 +52,10 @@ class CalendarUI(object):
         self.paned.add2(self.day_view)
 
         # Display the calendars as tags
+        self.colors = find_colors(.57, .72, .79)
+
         self.calendars = gtk.HBox()
         self.calendars.set_spacing(1)
-        
-        colors = find_colors(.57, .72, .79)
-    
-        for tag in [Tag("Schule", (.57, .72, .79)), Tag("Feiertage", colors.next())]:
-            self.calendars.pack_start(tag, False, False, 0)
-        
         self.layout.pack_start(self.calendars, False, False, 0)
 
         # Show the window
@@ -80,6 +76,11 @@ class CalendarUI(object):
     def update_event(self, event):
 
         self.events[event.uid] = event
-        self.view.update_event(event)      
+        self.view.update_event(event)
 
+    def add_calendar(self, calendar):
+
+        tag = Tag(calendar['name'], self.colors.next())
+        tag.show()
+        self.calendars.pack_start(tag, False, False, 0)
 
