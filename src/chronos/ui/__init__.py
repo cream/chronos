@@ -79,7 +79,6 @@ class CalendarUI(object):
         self.month_year_label.set_markup(self.date.strftime(MONTH_YEAR_TEMPLATE))
 
 
-    # TODO: This does not work!
     def add_event(self, event):
 
         self.events[event.uid] = event
