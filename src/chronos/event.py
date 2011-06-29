@@ -27,8 +27,7 @@ class Event(object):
            self.description == other.description and
            self.start == other.start and
            self.end == other.end and
-           self.location == other.location and
-           self.calendar_uid == other.calendar_uid):
+           self.location == other.location):
             return True
         else:
             return False
