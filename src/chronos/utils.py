@@ -63,6 +63,14 @@ class datetime(_datetime.datetime):
                          self.second, self.microsecond, self.tzinfo)
 
 
+    @property
+    def next_day(self):
+
+        next = self + _datetime.timedelta(1)
+        return datetime(next.year, next.month, next.day, next.hour, next.minute,
+                        next.second, next.microsecond, next.tzinfo)
+
+
 
 def days_in_month(year, month):
     """
@@ -79,6 +87,18 @@ def iter_month_dates(year, month):
     monthdates = calendar.Calendar().itermonthdates(year, month)
     for monthday in monthdates:
         yield datetime.from_date(monthday)
+
+
+def iter_date_range(start, end):
+    """
+    Returns an iterator which yields all dates between ``start`` and ``end``
+    """
+    yield start
+    date = start
+    while date.as_date != end.as_date:
+        date = date.next_day
+        yield date
+
 
 
 def number_of_weeks(year, month):
