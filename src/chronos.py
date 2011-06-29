@@ -4,6 +4,8 @@ import cream
 import cream.ipc
 import cream.util
 
+from cream.util.dicts import ordereddict
+
 from chronos.ui import CalendarUI
 from chronos.event import Event
 
@@ -15,7 +17,7 @@ class Chronos(cream.Module):
         cream.Module.__init__(self, 'org.cream.Chronos')
 
         self.events = {}
-        self.calendar_colors = {}
+        self.calendars = ordereddict()
 
         self.calendar = cream.ipc.get_object('org.cream.PIM', '/org/cream/PIM/Calendar')
         self.calendar.search_for_calendars()
@@ -38,7 +40,7 @@ class Chronos(cream.Module):
 
     def add_event(self, uid, event):
 
-        color = self.calendar_colors[event.pop('calendar_uid')]
+        color = self.calendars[event.pop('calendar_uid')]['color']
 
         event = Event(color=color, **event)
         self.events[uid] = event
@@ -65,7 +67,16 @@ class Chronos(cream.Module):
 
         color = self.calendar_ui.add_calendar(calendar)
 
-        self.calendar_colors[calendar['uid']] = color
+        calendar.update({'color': color})
+        self.calendars[calendar['uid']] = calendar
+
+        new = ordereddict()
+        for key in sorted(self.calendars, key=lambda k: self.calendars[k]['name']):
+            new[key] = self.calendars[key]
+
+        self.calendars = new
+
+        self.calendar_ui.reorder_calendars(self.calendars.values())
 
 
 

@@ -1,6 +1,6 @@
 import os
 import colorsys
-from gi.repository import Gtk as gtk
+from gi.repository import Gtk as gtk, GObject as gobject
 
 from chronos.ui.month import MonthView
 from chronos.ui.day import DayView
@@ -103,6 +103,18 @@ class CalendarUI(object):
         self.calendars.pack_start(tag, False, False, 0)
 
         return color
+
+
+    def reorder_calendars(self, calendars):
+
+        for child in self.calendars.get_children():
+            self.calendars.remove(child)
+            child.destroy()
+
+        for calendar in calendars:
+            tag = Tag(calendar['name'], calendar['color'])
+            tag.show()
+            self.calendars.pack_start(tag, False, False, 0)
 
     def month_change_cb(self, button):
 
