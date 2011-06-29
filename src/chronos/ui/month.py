@@ -459,12 +459,10 @@ def calculate_y_coords(event, dates, height):
     """
 
     y = [0]
-    i = 0
     for date in dates:
         if date.first_day_of_week and date != dates[0]:
-            i += 1
             y.append(0)
         position = date.position_of_event(event)
-        y[i] = max(y[i], date.y + position*height + PADDING_EVENT*position)
+        y[-1] = max(y[-1], date.y + position*height + PADDING_EVENT*position)
 
     return y
