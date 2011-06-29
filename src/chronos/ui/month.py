@@ -124,14 +124,8 @@ class MonthView(gtk.DrawingArea):
         """
         Yields events in current month
         """
-        events_by_date = defaultdict(list)
-        for event in self._events.itervalues():
-            dates = iter_date_range(event.start, event.end)
-            for date in dates:
-                if date.year == self.date.year and date.month == self.date.month:
-                    events_by_date[date.as_date].append(event)
 
-        def sort(date, e1, e2):
+        def event_larger_in_week(date, e1, e2):
             weekstart = first_day_of_week(date)
             weekend = last_day_of_week(date)
 
@@ -155,21 +149,37 @@ class MonthView(gtk.DrawingArea):
             else:
                 e2_end = e2.end
 
-            td1 = e1_end - e1_start
-            td2 = e2_end - e2_start
+            if e1_end - e1_start > e2_end - e2_start:
+                return True
+            return False
 
-            if td1 == td2:
-                return 0
-            elif td1 > td2:
-                return 1
-            else:
-                return -1
+        def get_date_range(event):
+            for date in iter_date_range(event.start, event.end):
+               if date.year == self.date.year and date.month == self.date.month:
+                    yield date
 
-        for date in sorted(events_by_date):
-            events = events_by_date[date]
-            sorted_events = sorted(events, cmp=lambda e1, e2: sort(date, e1, e2), reverse=True)
-            for i, event in enumerate(sorted_events):
-                yield date, event, i
+        # map events to dates
+        events_by_date = defaultdict(list)
+        for event in self._events.itervalues():
+            for date in get_date_range(event):
+                events_by_date[date.as_date].append(event)
+
+        # calculate the position of a event for every row
+        for event in self._events.itervalues():
+            event_pos = [0]
+            for date in get_date_range(event):
+                if date.first_day_of_week:
+                    event_pos.append(0)
+                for other_event in events_by_date[date.as_date]:
+                    if other_event == event:
+                        continue
+                    if not event_larger_in_week(date, event, other_event):
+                        event_pos[-1] += 1
+            row = 0
+            for i, date in enumerate(get_date_range(event)):
+                if date.first_day_of_week and i != 0:
+                    row += 1
+                yield date, event, event_pos[row]
 
 
     def add_event(self, event):

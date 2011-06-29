@@ -11,6 +11,15 @@ class datetime(_datetime.datetime):
         _datetime.datetime.__init__(*args, **kwargs)
 
 
+    @property
+    def first_day_of_week(self):
+        return self.weekday() == 0
+
+    @property
+    def last_day_of_week(self):
+        return self.weekday() == 6
+
+
     @classmethod
     def from_date(cls, d):
 
