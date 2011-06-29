@@ -23,28 +23,28 @@ class Tag(gtk.DrawingArea):
         gtk.DrawingArea.__init__(self)
         self.connect('draw', self.draw_cb)
         self.set_property('height-request', 32)
-        
+
         self.label = label
         self.color = color
-        
-        
+
+
     def draw_cb(self, drawing_area, ctx):
-    
+
         ctx.select_font_face("Droid Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
         ctx.set_font_size(12)
-    
+
         t_xbearing, t_ybearing, t_width, t_height, t_xadvance, t_yadvance = ctx.text_extents(self.label)
-    
+
         width = t_width + 45
         height = self.get_preferred_height()[0]
-        
+
         self.set_size_request(width, height)
-        
+
         ctx.save()
         ctx.set_fill_rule(cairo.FILL_RULE_EVEN_ODD)
         ctx.set_line_width(1)
         ctx.translate(.5, .5)
-        
+
         ctx.move_to(5, 6)
         ctx.line_to(width-18, 6)
         ctx.line_to(width-10, 6 + (height-12)*1.0/3.0)
@@ -52,17 +52,17 @@ class Tag(gtk.DrawingArea):
         ctx.line_to(width-18, height-6)
         ctx.line_to(5, height-6)
         ctx.line_to(5, 6)
-        
+
         ctx.new_sub_path()
         ctx.arc(width - 16, height/2.0, 3, 0, 2*pi)
-        
+
         ctx.set_source_rgb(*self.color)
         ctx.fill_preserve()
-        
+
         ctx.set_source_rgb(*darken(*self.color))
         ctx.stroke()
         ctx.restore()
-        
+
         ctx.save()
         ctx.set_source_rgb(.3, 0, 0)
         ctx.move_to(width - 16, height/2.0)
@@ -71,8 +71,7 @@ class Tag(gtk.DrawingArea):
         ctx.rel_curve_to(1, 5, 3, 5, 2, 7)
         ctx.stroke()
         ctx.restore()
-        
+
         ctx.move_to(16-t_xbearing, (self.get_preferred_height()[0] - t_ybearing) / 2.0)
         ctx.show_text(self.label)
         ctx.stroke()
-
