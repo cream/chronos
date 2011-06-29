@@ -1,7 +1,9 @@
-from gi.repository import Gtk as gtk
+from gi.repository import Gtk as gtk, Gdk as gdk
 import cairo
 from math import pi
 import colorsys
+
+from cream.gui import Timeline, CURVE_SINE
 
 # TODO: Move to chronos.ui.util
 def darken(r, g, b):
@@ -14,14 +16,26 @@ def darken(r, g, b):
     return colorsys.hsv_to_rgb(*c)
 
 
+
 class Tag(gtk.DrawingArea):
 
     __gtype_name__ = 'Tag'
 
     def __init__(self, label, color):
 
+        self.alpha = .5
+
         gtk.DrawingArea.__init__(self)
+
+        self.set_events(self.get_events() |
+                        gdk.EventMask.BUTTON_PRESS_MASK |
+                        gdk.EventMask.ENTER_NOTIFY_MASK |
+                        gdk.EventMask.LEAVE_NOTIFY_MASK)
+        self.connect('button-press-event', self.button_press_cb)
+        self.connect('enter-notify-event', self.mouse_enter_cb)
+        self.connect('leave-notify-event', self.mouse_leave_cb)
         self.connect('draw', self.draw_cb)
+
         self.set_property('height-request', 32)
 
         self.label = label
@@ -56,7 +70,7 @@ class Tag(gtk.DrawingArea):
         ctx.new_sub_path()
         ctx.arc(width - 16, height/2.0, 3, 0, 2*pi)
 
-        ctx.set_source_rgb(*self.color)
+        ctx.set_source_rgba(self.color[0], self.color[1], self.color[2], self.alpha)
         ctx.fill_preserve()
 
         ctx.set_source_rgb(*darken(*self.color))
@@ -75,3 +89,28 @@ class Tag(gtk.DrawingArea):
         ctx.move_to(16-t_xbearing, (self.get_preferred_height()[0] - t_ybearing) / 2.0)
         ctx.show_text(self.label)
         ctx.stroke()
+
+    def button_press_cb(self, tag, event):
+        pass
+
+
+    def mouse_enter_cb(self, tag, event):
+
+        def update(t, state):
+            self.alpha = .5  + state*.5
+            self.queue_draw()
+
+        t = Timeline(200, CURVE_SINE)
+        t.connect('update', update)
+        t.run()
+
+
+    def mouse_leave_cb(self, tag, event):
+
+        def update(t, state):
+            self.alpha = 1  - state*.5
+            self.queue_draw()
+
+        t = Timeline(300, CURVE_SINE)
+        t.connect('update', update)
+        t.run()
