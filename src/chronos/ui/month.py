@@ -8,7 +8,8 @@ from gi.repository import GObject as gobject, Gtk as gtk, Gdk as gdk
 from cream.util.dicts import ordereddict
 
 from chronos.utils import datetime, iter_month_dates, number_of_weeks, \
-                          iter_date_range
+                          iter_date_range, first_day_of_week, \
+                          last_day_of_week
 
 
 MONTH_YEAR_TEMPLATE = '%B %Y' # e.g. June 2011
@@ -130,9 +131,33 @@ class MonthView(gtk.DrawingArea):
                 if date.year == self.date.year and date.month == self.date.month:
                     events_by_date[date.as_date].append(event)
 
-        def sort(e1, e2):
-            td1 = e1.end.as_date - e1.start.as_date
-            td2 = e2.end.as_date - e2.start.as_date
+        def sort(date, e1, e2):
+            weekstart = first_day_of_week(date)
+            weekend = last_day_of_week(date)
+
+            if e1.start < weekstart:
+                e1_start = weekstart
+            else:
+                e1_start = e1.start
+
+            if e1.end > weekend:
+                e1_end = weekend
+            else:
+                e1_end = e1.end
+
+            if e2.start < weekstart:
+                e2_start = weekstart
+            else:
+                e2_start = e2.start
+
+            if e2.end > weekend:
+                e2_end = weekend
+            else:
+                e2_end = e2.end
+
+            td1 = e1_end - e1_start
+            td2 = e2_end - e2_start
+
             if td1 == td2:
                 return 0
             elif td1 > td2:
@@ -142,7 +167,7 @@ class MonthView(gtk.DrawingArea):
 
         for date in sorted(events_by_date):
             events = events_by_date[date]
-            sorted_events = sorted(events, cmp=sort, reverse=True)
+            sorted_events = sorted(events, cmp=lambda e1, e2: sort(date, e1, e2), reverse=True)
             for i, event in enumerate(sorted_events):
                 yield date, event, i
 

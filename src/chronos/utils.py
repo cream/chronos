@@ -16,6 +16,12 @@ class datetime(_datetime.datetime):
 
         return cls(d.year, d.month, d.day)
 
+    @classmethod
+    def from_datetime(cls, d):
+
+        return cls(d.year, d.month, d.day, d.hour, d.minute, d.second,
+                   d.microsecond, d.tzinfo)
+
 
     @property
     def as_date(self):
@@ -67,9 +73,7 @@ class datetime(_datetime.datetime):
     def next_day(self):
 
         next = self + _datetime.timedelta(1)
-        return datetime(next.year, next.month, next.day, next.hour, next.minute,
-                        next.second, next.microsecond, next.tzinfo)
-
+        return datetime.from_datetime(next)
 
 
 def days_in_month(year, month):
@@ -98,6 +102,19 @@ def iter_date_range(start, end):
     while date.as_date != end.as_date:
         date = date.next_day
         yield date
+
+
+def first_day_of_week(date):
+
+    first = date - _datetime.timedelta(date.weekday())
+    return datetime.from_datetime(first)
+
+
+def last_day_of_week(date):
+    last = date + _datetime.timedelta(6 - date.weekday())
+    return datetime.from_datetime(last)
+
+
 
 
 
