@@ -29,9 +29,9 @@ PADDING_BOTTOM = 5
 PADDING_LEFT = 5
 PADDING_RIGHT = 5
 PADDING_DAY = 5
-PADDING_TITLE = 1
-PADDING_TITLE_LEFT = 5
-PADDING_EVENT = 2
+PADDING_TITLE = 3
+PADDING_TITLE_LEFT = 8
+PADDING_EVENT = 3
 
 
 def roundedrect(ctx, x, y, w, h, r = 15, left=True, right=True):
@@ -249,7 +249,7 @@ class MonthView(gtk.DrawingArea):
         ctx.rectangle(0, 0, width, height)
         ctx.fill()
 
-        cell_width = (width - PADDING_LEFT - PADDING_RIGHT) / 7
+        cell_width = (width - PADDING_LEFT - PADDING_RIGHT) / 7.0
 
         # Draw weekdays
         ctx.set_source_rgba(*COLOR_GREY)
@@ -270,27 +270,22 @@ class MonthView(gtk.DrawingArea):
 
         # Draw grid
         def draw_line(ctx, x1, y1, x2, y2):
-            ctx.set_source_rgba(0, 0, 0, 0.8)
-            ctx.set_line_width(0.2)
-            ctx.move_to(x1 + 0.5, y1 + 0.5)
-            ctx.line_to(x2, y2)
+            ctx.set_source_rgba(.8, .8, .8, 1)
+            ctx.set_line_width(1)
+            ctx.move_to(x1 + .5, y1 + .5)
+            ctx.line_to(x2 + .5, y2 + .5)
             ctx.stroke()
 
         y += PADDING
 
         grid_height = height - y - PADDING_BOTTOM
         num_weeks = number_of_weeks(self.date.year, self.date.month)
-        cell_height = grid_height / num_weeks
+        cell_height = grid_height / float(num_weeks)
 
-        # Draw vertical lines
         x = x2 = PADDING_LEFT
-        for column in range(7):
-            draw_line(ctx, x2, y, x2, y + grid_height)
-            x2 += cell_width
 
         # Draw rightmost line
-        x2 = width - PADDING_RIGHT
-        draw_line(ctx, x2, y, x2, y + grid_height)
+        draw_line(ctx, int(x2), int(y), int(x2), int(y + grid_height))
 
         # Draw horizontal lines and dates
         monthdates = iter_month_dates(self.date.year, self.date.month)
@@ -300,7 +295,7 @@ class MonthView(gtk.DrawingArea):
             if date.weekday() == 0 and i != 0:
                 # New row, new line
                 y2 += cell_height
-                draw_line(ctx, x, y2, width - PADDING_RIGHT, y2)
+                draw_line(ctx, int(x), int(y2), int(width-PADDING_RIGHT), int(y2))
 
             # Draw the day into the right upper corner
             ctx.set_source_rgba(*COLOR_GREY)
@@ -313,15 +308,15 @@ class MonthView(gtk.DrawingArea):
             _, _, t_width, t_height = get_text_extents(ctx, day)
             x3 = x2 - t_width - PADDING_DAY
             y3 = y2 + t_height + PADDING_DAY
-            ctx.move_to(x3, y3)
+            ctx.move_to(int(x3), int(y3))
             ctx.show_text(day)
-            self.date_coords[date.as_date] = (x2 - cell_width, y3 + PADDING_DAY)
+            self.date_coords[date.as_date] = (int(x2) - int(cell_width), int(y3) + PADDING_DAY)
 
             if date.month != self.date.month:
                 # Draw the day grey, it sucks!
-                ctx.set_source_rgba(0, 0, 0, 0.1)
+                ctx.set_source_rgba(0, 0, 0, 0.05)
                 x2 = x + cell_width * (date.weekday())
-                ctx.rectangle(x2+0.5, y2+0.5, cell_width-0.5, cell_height-0.5)
+                ctx.rectangle(int(x2)+1, int(y2)+1, int(cell_width), int(cell_height)-1)
                 ctx.fill()
 
         # Draw bottom line
@@ -338,15 +333,31 @@ class MonthView(gtk.DrawingArea):
 
             if (event.start.as_date == date.as_date and
                 event.end.as_date == date.as_date):
-                roundedrect(ctx, x2, y2, cell_width, event_height)
+                roundedrect(ctx, int(x2+5), int(y2), int(cell_width-10), int(event_height), 8)
             elif event.start.as_date == date.as_date:
-                roundedrect(ctx, x2, y2, cell_width, event_height, right=False)
+                roundedrect(ctx, int(x2+5), int(y2), int(cell_width-5), int(event_height), 8, right=False)
             elif event.end.as_date == date.as_date:
-                roundedrect(ctx, x2, y2, cell_width, event_height, left=False)
+                roundedrect(ctx, int(x2), int(y2), int(cell_width-5), int(event_height), 8, left=False)
             else:
-                ctx.rectangle(x2, y2, cell_width, event_height)
+                ctx.rectangle(int(x2), int(y2), int(cell_width), int(event_height))
 
             ctx.fill()
+            
+        # Draw vertical lines
+        x2 = x
+        for column in range(8):
+            draw_line(ctx, int(x2), int(y), int(x2), int(y + grid_height))
+            x2 += cell_width
+        
+        for date, event, row in self.events:
+            x2, y2 = self.date_coords[date.as_date]
+            y2 += row * (event_height + PADDING_DAY)
+            if date == event.start or date.first_day_of_week:
+                ctx.save()
+                ctx.set_source_rgb(0, 0, 0)
+                ctx.move_to(x2 + PADDING_TITLE_LEFT, y2 + 11)
+                ctx.show_text(event.title)
+                ctx.restore()
 
 
 def get_text_extents(ctx, text):
