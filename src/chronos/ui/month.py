@@ -5,8 +5,6 @@ from collections import defaultdict
 
 from gi.repository import GObject as gobject, Gtk as gtk, Gdk as gdk
 
-from cream.util.dicts import ordereddict
-
 from chronos.utils import datetime, iter_month_dates, number_of_weeks, \
                           iter_date_range, first_day_of_week, \
                           last_day_of_week
