@@ -62,39 +62,6 @@ def roundedrect(ctx, x, y, w, h, r = 15, left=True, right=True):
         ctx.line_to(x, y)                     # Straight line to A
 
 
-class Date(object):
-
-    def __init__(self, dtime, x, y, outside):
-
-        self.datetime = dtime
-        self.x = x
-        self.y = y
-        self.outside = outside
-        self.selected = False
-        self.first_day_of_week = self.datetime.weekday() == 0
-        self.last_day_of_week = self.datetime.weekday() == 6
-
-        self.events = ordereddict()
-
-
-    def add_event(self, event):
-
-        self.events[event.uid] = event
-
-        # sort events after length
-        new = ordereddict()
-        events = sorted(self.events.values(), key=lambda d: d.end - d.start, reverse=True)
-        for event in events:
-            new[event.uid] = event
-
-        self.events = new
-
-
-    def position_of_event(self, event):
-
-        return self.events.values().index(event)
-
-
 class MonthView(gtk.DrawingArea):
 
     __gtype_name__ = 'MonthView'
