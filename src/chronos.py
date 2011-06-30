@@ -28,9 +28,9 @@ class Chronos(cream.Module):
         self.calendar.search_for_calendars()
 
         self.calendar.connect_to_signal('calendar_added', self.add_calendar)
-        self.calendar.connect_to_signal('event_added', self.add_event)
-        self.calendar.connect_to_signal('event_removed', self.remove_event)
-        self.calendar.connect_to_signal('event_updated', self.update_event)
+        self.calendar.connect_to_signal('event_added', lambda u,e: self.add_events([e]))
+        self.calendar.connect_to_signal('event_removed', lambda u,e: self.remove_events([e]))
+        self.calendar.connect_to_signal('event_updated', lambda u,e: self.update_events([e]))
 
         self.calendar_ui = CalendarUI()
 
@@ -47,29 +47,37 @@ class Chronos(cream.Module):
         gobject.timeout_add(1, add_events)
 
 
-    def add_event(self, uid, event):
+    def add_events(self, events):
 
-        color = self.calendars[event['calendar_uid']]['color']
+        added_events = []
+        for event in events:
+            color = self.calendars[event['calendar_uid']]['color']
+            event = Event(color=color, **event)
 
-        event = Event(color=color, **event)
-        self.events[uid] = event
+            self.events[event.uid] = event
+            added_events.append(event)
 
-        self.calendar_ui.add_event(event)
-
-
-    def remove_event(self, uid, event):
-
-        self.events.pop(uid)
-
-        self.calendar_ui.main_view.remove_event(event)
+        self.calendar_ui.add_events(added_events)
 
 
-    def update_event(self, uid, event):
+    def remove_events(self, events):
 
-        event = Event(**event)
-        self.events[uid] = event
+        removed_events = []
+        for event in events:
+            removed_events.append(self.events.pop(uid))
 
-        self.calendar_ui.main_view.update_event(event)
+        self.calendar_ui.main_view.remove_events(removed_events)
+
+
+    def update_events(self, events):
+
+        updated_events = []
+        for event in events:
+            event = Event(**event)
+            self.events[uid] = event
+            updated_events.append(event)
+
+        self.calendar_ui.main_view.update_events(updated_events)
 
 
     def add_calendar(self, uid, calendar):
@@ -91,12 +99,13 @@ class Chronos(cream.Module):
     def calendar_state_change_cb(self, ui, uid, state):
 
         self.calendars[uid]['active'] = state
-
+        updated_events = []
         for event in self.events.itervalues():
             if event.calendar_uid == uid:
                 event.active = state
-                self.calendar_ui.update_event(event)
+                updated_events.append(event)
 
+        self.calendar_ui.update_events(updated_events)
 
 
 if __name__ == '__main__':

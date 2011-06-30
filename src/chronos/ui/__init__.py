@@ -69,17 +69,17 @@ class CalendarUI(gobject.GObject):
         self.month_year_label.set_markup(self.date.strftime(MONTH_YEAR_TEMPLATE))
 
 
-    def add_event(self, event):
+    def add_events(self, events):
 
-        self.month_view.add_event(event)
+        self.month_view.add_events(events)
 
-    def remove_event(self, event):
+    def remove_events(self, events):
 
-        self.view.remove_event(event)
+        self.view.remove_events(events)
 
-    def update_event(self, event):
+    def update_events(self, events):
 
-        self.month_view.update_event(event)
+        self.month_view.update_events(events)
 
 
     def set_calendars(self, calendars):

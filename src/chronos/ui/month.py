@@ -184,23 +184,30 @@ class MonthView(gtk.DrawingArea):
                 yield date, event, event_pos[row]
 
 
-    def add_event(self, event):
 
-        self._events[event.uid] = event
+    def add_events(self, events):
 
+        for event in events:
+            self._events[event.uid] = event
+
+        self.update_cell_events()
         self.queue_draw()
 
-    def remove_event(self, event):
+    def remove_events(self, events):
 
-        self._events.pop(event.uid)
+        for event in events:
+            self._events.pop(event.uid)
 
+        self.update_cell_events()
         self.queue_draw()
 
 
-    def update_event(self, event):
+    def update_events(self, events):
 
-        self._events[event.uid] = event
+        for event in events:
+            self._events[event.uid] = event
 
+        self.update_cell_events()
         self.queue_draw()
 
 
