@@ -106,11 +106,11 @@ def iter_date_range(start, end):
     """
     Returns an iterator which yields all dates between ``start`` and ``end``
     """
-    yield start
+    yield start.as_date
     date = start
     while date.as_date != end.as_date:
         date = date.next_day
-        yield date
+        yield date.as_date
 
 
 def first_day_of_week(date):

@@ -76,13 +76,15 @@ class MonthView(gtk.DrawingArea):
 
         self.date = date
 
-        self.date_coords = {}
+        self.cells = []
         self._events = {}
+        self.grid_origin = (0, 0)
 
         self.set_size_request(800, 600)
         self.set_events(self.get_events() | gdk.EventMask.BUTTON_PRESS_MASK)
 
         self.connect('draw', self.draw)
+        self.connect('size-allocate', lambda *x: self.calculate_cell_data())
         self.connect('button-press-event', self.button_press_cb)
 
 
@@ -133,6 +135,7 @@ class MonthView(gtk.DrawingArea):
             for date in get_date_range(event):
                 events_by_date[date.as_date].append(event)
 
+        dates = defaultdict(list)
         # calculate the position of a event for every row
         for event in events:
             event_pos = [0]
@@ -148,8 +151,9 @@ class MonthView(gtk.DrawingArea):
             for i, date in enumerate(get_date_range(event)):
                 if date.first_day_of_week and i != 0:
                     row += 1
-                yield date, event, event_pos[row]
+                dates[date].append((event, event_pos[row]))
 
+        return dates
 
 
     def add_events(self, events):
@@ -181,36 +185,71 @@ class MonthView(gtk.DrawingArea):
     def set_date(self, date):
 
         self.date = date
+        self.calculate_cell_data()
         self.queue_draw()
+
+
+    def update_cell_events(self):
+
+        events_by_date = self.events
+        for row in self.cells:
+            for cell in row:
+                cell['events'] = events_by_date[cell['date']]
+
+
+    def calculate_cell_data(self):
+
+        width = self.get_allocation().width
+        height = self.get_allocation().height
+
+        x, y = self.grid_origin
+
+        grid_height = height - y - PADDING_BOTTOM
+        num_weeks = number_of_weeks(self.date.year, self.date.month)
+        cell_height = grid_height / float(num_weeks)
+        cell_width = (width - PADDING_LEFT - PADDING_RIGHT) / 7.0
+
+        self.cells = []
+        for column in range(7):
+            self.cells.append([])
+            for row in range(num_weeks):
+                self.cells[column].append(None)
+
+        monthdates = iter_month_dates(self.date.year, self.date.month)
+
+        y2 = y
+        for row in range(num_weeks):
+            x2 = x
+            for column in range(7):
+                d = {'x': x2, 'y': int(y2), 'width': int(cell_width), 'height': int(cell_height), 'date': monthdates.next(), 'selected': False}
+                x2 += cell_width
+                self.cells[column][row] = d
+            y2 += cell_height
+
+        self.update_cell_events()
 
 
     def button_press_cb(self, widget, event):
 
-        obj = self.get_object_at_coords(event.x, event.y)
+        x, y = event.x, event.y
 
-        if isinstance(obj, Date):
-            self.selected_date = obj.datetime
+        num_weeks = number_of_weeks(self.date.year, self.date.month)
+        for column in range(7):
+            for row in range(num_weeks):
+                c_x = self.cells[column][row]['x']
+                c_y = self.cells[column][row]['y']
+                c_w = self.cells[column][row]['width']
+                c_h = self.cells[column][row]['height']
 
-        self.queue_draw()
+                if (in_rect(x, y, c_x, c_y, c_w, c_h)):
+                    self.cells[column][row]['selected'] = True
+                    self.emit('day-selected', self.cells[column][row]['date'])
+                    should_redraw = True
+                else:
+                    self.cells[column][row]['selected'] = False
 
-
-    def get_object_at_coords(self, x, y):
-
-        x0 = self.grid_origin[0]
-        y0 = self.grid_origin[1]
-        if x < x0 or y < y0:
-            return None
-
-        ret = None
-        for date in self.dates.itervalues():
-            if (x > date.x and x < date.x + self.grid_width
-                and y > date.y and y < date.y + self.grid_height):
-                date.selected = True
-                ret = date
-            else:
-                date.selected = False
-
-        return ret
+        if should_redraw:
+            self.queue_draw()
 
 
     def draw(self, widget, ctx):
@@ -244,112 +283,131 @@ class MonthView(gtk.DrawingArea):
             ctx.move_to(x, y)
             ctx.show_text(dayname)
 
+        if self.grid_origin != (PADDING_LEFT, y + PADDING):
+            self.grid_origin = (PADDING_LEFT, y + PADDING)
+            self.calculate_cell_data()
+        self.grid_origin = (PADDING_LEFT, y + PADDING)
+
+        # calculate the maximal event height
+        event_height = 0
+        for events in self.events.values():
+            event_height = max(calculate_event_height(events[0][0], ctx), event_height)
+
+        num_weeks = number_of_weeks(self.date.year, self.date.month)
+        for column in range(7):
+            for row in range(num_weeks):
+                x = self.cells[column][row]['x']
+                y = self.cells[column][row]['y']
+                cell_width = self.cells[column][row]['width']
+                cell_height = self.cells[column][row]['height']
+                date = self.cells[column][row]['date']
+                events = self.cells[column][row]['events']
+                selected = self.cells[column][row]['selected']
+
+                if date.month != self.date.month:
+                    # Draw the day grey, it sucks!
+                    ctx.set_source_rgba(0, 0, 0, 0.05)
+                    ctx.rectangle(x, y, cell_width, cell_height)
+                    ctx.fill()
+
+                if selected:
+                    ctx.set_source_rgba(0, 0, 0.1, 0.1)
+                    ctx.rectangle(x+1, y+1, cell_width, cell_height)
+                    ctx.fill()
+
+                # Draw the day into the right upper corner
+                ctx.set_source_rgba(*COLOR_GREY)
+                ctx.select_font_face(*FONT_NORMAL)
+                ctx.set_font_size(FONT_SIZE_DAY)
+
+                _, _, t_width, t_height = get_text_extents(ctx, str(date.day))
+                x2 = x + cell_width - t_width - PADDING_DAY
+                y2 = y + t_height + PADDING_DAY
+                ctx.move_to(x2, y2)
+                ctx.show_text(str(date.day))
+
+                # Draw events
+                for event, i in events:
+                    ctx.set_source_rgb(*event.color)
+
+                    y3 = int(y2 + PADDING_EVENT + i * (event_height + PADDING_EVENT))
+
+                    if (event.start.as_date == date.as_date and
+                        event.end.as_date == date.as_date):
+                        roundedrect(ctx, x+5, y3, cell_width-10, event_height, 8)
+                    elif event.start.as_date == date.as_date:
+                        roundedrect(ctx, x+5, y3, cell_width-4, event_height, 8, right=False)
+                    elif event.end.as_date == date.as_date:
+                        roundedrect(ctx, x, y3, cell_width-5, event_height, 8, left=False)
+                    else:
+                        ctx.rectangle(x, y3, cell_width+1, event_height)
+
+                    ctx.fill()
+
         # Draw grid
         def draw_line(ctx, x1, y1, x2, y2):
             ctx.set_source_rgba(.8, .8, .8, 1)
             ctx.set_line_width(1)
-            ctx.move_to(x1 + .5, y1 + .5)
-            ctx.line_to(x2 + .5, y2 + .5)
+            ctx.move_to(int(x1) + .5, int(y1) + .5)
+            ctx.line_to(int(x2) + .5, int(y2) + .5)
             ctx.stroke()
 
-        y += PADDING
+        for column in range(7):
+            for row in range(num_weeks):
+                x = self.cells[column][row]['x']
+                y = self.cells[column][row]['y']
 
-        grid_height = height - y - PADDING_BOTTOM
-        num_weeks = number_of_weeks(self.date.year, self.date.month)
-        cell_height = grid_height / float(num_weeks)
+                # Draw horizontal line
+                if column == 0:
+                    draw_line(ctx, x, y, width - PADDING_RIGHT, y)
+                # Draw vertical line
+                if row == 0:
+                    draw_line(ctx, x, y, x, height - PADDING_BOTTOM)
+                # Draw rightmost line
+                if row == 0 and column == 6:
+                    x2 = int(x + cell_width)
+                    draw_line(ctx, x2, y, x2, height - PADDING_BOTTOM)
 
-        x = x2 = PADDING_LEFT
 
-        # Draw rightmost line
-        draw_line(ctx, int(x2), int(y), int(x2), int(y + grid_height))
+            # Draw bottom line
+            if column == 0:
+                y = int(y + cell_height)
+                draw_line(ctx, x, y, width - PADDING_RIGHT, y)
 
-        # Draw horizontal lines and dates
-        monthdates = iter_month_dates(self.date.year, self.date.month)
-        y2 = y
-        draw_line(ctx, x, y2, width - PADDING_RIGHT, y2)
-        for i, date in enumerate(monthdates):
-            if date.weekday() == 0 and i != 0:
-                # New row, new line
-                y2 += cell_height
-                draw_line(ctx, int(x), int(y2), int(width-PADDING_RIGHT), int(y2))
+        for column in range(7):
+            for row in range(num_weeks):
+                x = self.cells[column][row]['x']
+                y = self.cells[column][row]['y']
+                date = self.cells[column][row]['date']
+                events = self.cells[column][row]['events']
 
-            # Draw the day into the right upper corner
-            ctx.set_source_rgba(*COLOR_GREY)
-            ctx.select_font_face(*FONT_NORMAL)
-            ctx.set_font_size(FONT_SIZE_DAY)
+                ctx.select_font_face(*FONT_NORMAL)
+                ctx.set_font_size(FONT_SIZE_DAY)
 
-            x2 = x + cell_width * (date.weekday() + 1)
+                _, _,_, t_height = get_text_extents(ctx, str(date.day))
 
-            day = str(date.day)
-            _, _, t_width, t_height = get_text_extents(ctx, day)
-            x3 = x2 - t_width - PADDING_DAY
-            y3 = y2 + t_height + PADDING_DAY
-            ctx.move_to(int(x3), int(y3))
-            ctx.show_text(day)
-            self.date_coords[date.as_date] = (int(x2) - int(cell_width), int(y3) + PADDING_DAY)
+                y2 = y + t_height + PADDING_DAY
 
-            if date.month != self.date.month:
-                # Draw the day grey, it sucks!
-                ctx.set_source_rgba(0, 0, 0, 0.05)
-                x2 = x + cell_width * (date.weekday())
-                ctx.rectangle(int(x2)+1, int(y2)+1, int(cell_width), int(cell_height)-1)
-                ctx.fill()
-
-        # Draw bottom line
-        y2 = height - PADDING_BOTTOM
-        draw_line(ctx, x, y2, width - PADDING_RIGHT, y2)
-
-        # Draw events
-        event_height = calculate_event_height(self.events, ctx)
-
-        for date, event, row in self.events:
-            x2, y2 = self.date_coords[date.as_date]
-            y2 += row * (event_height + PADDING_DAY)
-            ctx.set_source_rgb(*event.color)
-
-            if (event.start.as_date == date.as_date and
-                event.end.as_date == date.as_date):
-                roundedrect(ctx, int(x2+5), int(y2), int(cell_width-10), int(event_height), 8)
-            elif event.start.as_date == date.as_date:
-                roundedrect(ctx, int(x2+5), int(y2), int(cell_width-5), int(event_height), 8, right=False)
-            elif event.end.as_date == date.as_date:
-                roundedrect(ctx, int(x2), int(y2), int(cell_width-5), int(event_height), 8, left=False)
-            else:
-                ctx.rectangle(int(x2), int(y2), int(cell_width), int(event_height))
-
-            ctx.fill()
-
-        # Draw vertical lines
-        x2 = x
-        for column in range(8):
-            draw_line(ctx, int(x2), int(y), int(x2), int(y + grid_height))
-            x2 += cell_width
-
-        for date, event, row in self.events:
-            x2, y2 = self.date_coords[date.as_date]
-            y2 += row * (event_height + PADDING_DAY)
-            if date == event.start or date.first_day_of_week:
-                ctx.save()
+                # Draw event titles
                 ctx.set_source_rgb(0, 0, 0)
-                ctx.move_to(x2 + PADDING_TITLE_LEFT, y2 + 11)
-                ctx.show_text(event.title)
-                ctx.restore()
+                for event, i in events:
+                    y3 = int(y2 + PADDING_EVENT + i * (event_height + PADDING_EVENT))
+                    if date == event.start.as_date or date.first_day_of_week:
+                        ctx.move_to(x + PADDING_TITLE_LEFT, y3 + 11)
+                        ctx.show_text(event.title)
+
 
 
 def get_text_extents(ctx, text):
     return ctx.text_extents(text)[:4]
 
 
-def calculate_event_height(events, ctx):
+def calculate_event_height(event, ctx):
     """
-    Calculates the maximum height for all events
+    Calculates the height for the event
     """
 
-    height = 0
-    for date, event, row in events:
-        height = max(height, get_text_extents(ctx, event.title)[3])
-
-    return height + 2*PADDING_TITLE
+    return int(get_text_extents(ctx, event.title)[3] + 2*PADDING_TITLE)
 
 
 def calculate_y_coords(event, dates, height):
@@ -365,3 +423,9 @@ def calculate_y_coords(event, dates, height):
         y[-1] = max(y[-1], date.y + position*height + PADDING_EVENT*position)
 
     return y
+
+def in_rect(x, y, x0, y0, w, h):
+    """
+    Returns if x and y are in the rectangle specified by x0, y0, w, h
+    """
+    return x > x0 and x < x0 + w and y > y0 and y < y0 + h
