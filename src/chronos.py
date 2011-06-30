@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+from gi.repository import GObject as gobject
+
 import cream
 import cream.ipc
 import cream.util
@@ -39,8 +41,11 @@ class Chronos(cream.Module):
         for calendar in self.calendar.get_calendars():
             self.add_calendar(calendar['uid'], calendar)
 
-        for event in self.calendar.query({}):
-            self.add_event(event['uid'], event)
+        def add_events():
+            events = self.calendar.query({})
+            self.add_events(events)
+        gobject.timeout_add(1, add_events)
+
 
     def add_event(self, uid, event):
 
