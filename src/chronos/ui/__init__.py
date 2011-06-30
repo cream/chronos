@@ -1,5 +1,4 @@
 import os
-import colorsys
 from gi.repository import Gtk as gtk, GObject as gobject
 
 from chronos.ui.month import MonthView
@@ -10,24 +9,17 @@ from chronos.utils import datetime
 
 MONTH_YEAR_TEMPLATE = '<span weight="bold" size="x-large">%B %Y</span>'
 
-# TODO: Move to chronos.ui.util
-def find_colors(r, g, b):
 
-    offset = 1.0/6
+class CalendarUI(gobject.GObject):
 
-    hsv = colorsys.rgb_to_hsv(r, g, b)
-    
-    while True:
-        c = (hsv[0] - offset, hsv[1], hsv[2])
-        offset += 1.0/6
-        yield colorsys.hsv_to_rgb(*c)
-
-
-class CalendarUI(object):
+    __gsignals__ = {
+        'calendar-state-changed': (gobject.SignalFlags.RUN_LAST, None, (str, bool)),
+    }
 
     def __init__(self):
 
-        self.events = {}
+        gobject.GObject.__init__(self)
+
         self.date = datetime.now()
 
         interface_path = os.path.join(os.path.dirname(__file__), 'calendar.ui')
@@ -61,8 +53,6 @@ class CalendarUI(object):
         self.paned.add2(self.day_view)
 
         # Display the calendars as tags
-        self.colors = find_colors(.57, .72, .79)
-
         self.calendars = gtk.HBox()
         self.calendars.set_spacing(1)
         self.layout.pack_start(self.calendars, False, False, 0)
@@ -81,39 +71,29 @@ class CalendarUI(object):
 
     def add_event(self, event):
 
-        self.events[event.uid] = event
         self.month_view.add_event(event)
 
     def remove_event(self, event):
 
-        self.events.pop(event.uid)
         self.view.remove_event(event)
 
     def update_event(self, event):
 
-        self.events[event.uid] = event
-        self.view.update_event(event)
-
-    def add_calendar(self, calendar):
-
-        color = self.colors.next()
-        tag = Tag(calendar['name'], color)
-        tag.show()
-        self.calendars.pack_start(tag, False, False, 0)
-
-        return color
+        self.month_view.update_event(event)
 
 
-    def reorder_calendars(self, calendars):
+    def set_calendars(self, calendars):
 
         for child in self.calendars.get_children():
             self.calendars.remove(child)
             child.destroy()
 
         for calendar in calendars:
-            tag = Tag(calendar['name'], calendar['color'])
+            tag = Tag(calendar['uid'], calendar['name'], calendar['color'], calendar['active'])
             tag.show()
             self.calendars.pack_start(tag, False, False, 0)
+
+            tag.connect('activity-changed', self.calendar_state_change_cb)
 
     def month_change_cb(self, button):
 
@@ -121,3 +101,8 @@ class CalendarUI(object):
             self.set_date(self.date.previous_month)
         elif button == self.button_next:
             self.set_date(self.date.next_month)
+
+
+    def calendar_state_change_cb(self, calendar, state):
+
+        self.emit('calendar-state-changed', calendar.uid, state)

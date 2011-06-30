@@ -4,7 +4,7 @@ class Event(object):
     """An internal representation of an event."""
 
     def __init__(self, uid, title='', description='', start=None, end=None,
-                       location=None, color=None):
+                       location=None, calendar_uid='', color=None, active=True):
 
         self.uid = uid
         self.title = title
@@ -12,7 +12,9 @@ class Event(object):
         self.start = start
         self.end = end
         self.location = location
+        self.calendar_uid = calendar_uid
         self.color = color
+        self.active = active
 
         if isinstance(start, (float, int)):
             self.start = datetime.fromtimestamp(start)
@@ -27,7 +29,9 @@ class Event(object):
            self.description == other.description and
            self.start == other.start and
            self.end == other.end and
-           self.location == other.location):
+           self.location == other.location and
+           self.calendar_uid == other.calendar_uid and
+           self.active == other.active):
             return True
         else:
             return False

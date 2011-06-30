@@ -158,14 +158,16 @@ class MonthView(gtk.DrawingArea):
                if date.year == self.date.year and date.month == self.date.month:
                     yield date
 
+        events = filter(lambda e: e.active, self._events.itervalues())
+
         # map events to dates
         events_by_date = defaultdict(list)
-        for event in self._events.itervalues():
+        for event in events:
             for date in get_date_range(event):
                 events_by_date[date.as_date].append(event)
 
         # calculate the position of a event for every row
-        for event in self._events.itervalues():
+        for event in events:
             event_pos = [0]
             for date in get_date_range(event):
                 if date.first_day_of_week:
@@ -342,13 +344,13 @@ class MonthView(gtk.DrawingArea):
                 ctx.rectangle(int(x2), int(y2), int(cell_width), int(event_height))
 
             ctx.fill()
-            
+
         # Draw vertical lines
         x2 = x
         for column in range(8):
             draw_line(ctx, int(x2), int(y), int(x2), int(y + grid_height))
             x2 += cell_width
-        
+
         for date, event, row in self.events:
             x2, y2 = self.date_coords[date.as_date]
             y2 += row * (event_height + PADDING_DAY)

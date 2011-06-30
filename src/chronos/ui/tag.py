@@ -1,4 +1,4 @@
-from gi.repository import Gtk as gtk, Gdk as gdk
+from gi.repository import Gtk as gtk, Gdk as gdk, GObject as gobject
 import cairo
 from math import pi
 import colorsys
@@ -17,15 +17,20 @@ def darken(r, g, b):
 
 
 
-class Tag(gtk.DrawingArea):
+class Tag(gtk.DrawingArea, gobject.GObject):
 
     __gtype_name__ = 'Tag'
+    __gsignals__ = {
+        'activity-changed': (gobject.SignalFlags.RUN_LAST, None, (bool,)),
+    }
 
-    def __init__(self, label, color):
+    def __init__(self, uid, label, color, active):
 
+        self.active = active
         self.alpha = .5
 
         gtk.DrawingArea.__init__(self)
+        gobject.GObject.__init__(self)
 
         self.set_events(self.get_events() |
                         gdk.EventMask.BUTTON_PRESS_MASK |
@@ -38,6 +43,7 @@ class Tag(gtk.DrawingArea):
 
         self.set_property('height-request', 32)
 
+        self.uid = uid
         self.label = label
         self.color = color
 
@@ -70,15 +76,22 @@ class Tag(gtk.DrawingArea):
         ctx.new_sub_path()
         ctx.arc(width - 16, height/2.0, 3, 0, 2*pi)
 
-        ctx.set_source_rgba(self.color[0], self.color[1], self.color[2], self.alpha)
+        if not self.active:
+            ctx.set_source_rgba(0.6, 0.6, 0.6, self.alpha)
+        else:
+            ctx.set_source_rgba(self.color[0], self.color[1], self.color[2], self.alpha)
         ctx.fill_preserve()
 
-        ctx.set_source_rgb(*darken(*self.color))
+        if self.active:
+            ctx.set_source_rgb(*darken(*self.color))
+        else:
+            ctx.set_source_rgba(0.3, 0.3, 0.3, self.alpha)
         ctx.stroke()
         ctx.restore()
 
         ctx.save()
-        ctx.set_source_rgb(.3, 0, 0)
+        if self.active:
+            ctx.set_source_rgb(.3, 0, 0)
         ctx.move_to(width - 16, height/2.0)
         ctx.rel_curve_to(3, 0, 6, 5, 8, 0)
         ctx.move_to(width - 9, height/2.0+2)
@@ -87,11 +100,23 @@ class Tag(gtk.DrawingArea):
         ctx.restore()
 
         ctx.move_to(16-t_xbearing, (self.get_preferred_height()[0] - t_ybearing) / 2.0)
+        if not self.active:
+            ctx.set_source_rgba(0.2, 0.2, 0.2, self.alpha)
         ctx.show_text(self.label)
         ctx.stroke()
 
     def button_press_cb(self, tag, event):
-        pass
+
+        self.active = not self.active
+        self.emit('activity-changed', self.active)
+
+        def update(t, state):
+            self.alpha = .5  + state*.5
+            self.queue_draw()
+
+        t = Timeline(200, CURVE_SINE)
+        t.connect('update', update)
+        t.run()
 
 
     def mouse_enter_cb(self, tag, event):
