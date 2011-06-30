@@ -48,6 +48,7 @@ class CalendarUI(gobject.GObject):
         self.button_next.connect('clicked', self.month_change_cb)
 
         # TODO: Make use of MonthViews signals!
+        self.month_view.connect('day-selected', self.day_selected_cb)
 
         self.paned.add1(self.month_view)
         self.paned.add2(self.day_view)
@@ -106,3 +107,7 @@ class CalendarUI(gobject.GObject):
     def calendar_state_change_cb(self, calendar, state):
 
         self.emit('calendar-state-changed', calendar.uid, state)
+
+
+    def day_selected_cb(self, view, date):
+        print 'Date', date, 'was selected'

@@ -67,7 +67,8 @@ class MonthView(gtk.DrawingArea):
     __gtype_name__ = 'MonthView'
     __gsignals__ = {
         'month-changed': (gobject.SignalFlags.RUN_LAST, None, ()),
-        'day-changed': (gobject.SignalFlags.RUN_LAST, None, ())
+        'day-changed': (gobject.SignalFlags.RUN_LAST, None, ()),
+        'day-selected': (gobject.SignalFlags.RUN_LAST, None, (object,)),
     }
 
     def __init__(self, date):
