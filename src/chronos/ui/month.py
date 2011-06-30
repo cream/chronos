@@ -76,6 +76,10 @@ class MonthView(gtk.DrawingArea):
         self.date = date
 
         self.cells = []
+        for column in range(7):
+            self.cells.append([])
+            for row in range(7):
+                self.cells[column].append({})
         self._events = {}
         self.grid_origin = (0, 0)
 
@@ -193,7 +197,8 @@ class MonthView(gtk.DrawingArea):
         events_by_date = self.events
         for row in self.cells:
             for cell in row:
-                cell['events'] = events_by_date[cell['date']]
+                if 'date' in cell:
+                    cell['events'] = events_by_date[cell['date']]
 
 
     def calculate_cell_data(self):
@@ -208,21 +213,21 @@ class MonthView(gtk.DrawingArea):
         cell_height = grid_height / float(num_weeks)
         cell_width = (width - PADDING_LEFT - PADDING_RIGHT) / 7.0
 
-        self.cells = []
-        for column in range(7):
-            self.cells.append([])
-            for row in range(num_weeks):
-                self.cells[column].append(None)
-
         monthdates = iter_month_dates(self.date.year, self.date.month)
 
         y2 = y
         for row in range(num_weeks):
             x2 = x
             for column in range(7):
-                d = {'x': x2, 'y': int(y2), 'width': int(cell_width), 'height': int(cell_height), 'date': monthdates.next(), 'selected': False}
+                d = self.cells[column][row]
+                d['x'] = x2
+                d['y'] = int(y2)
+                d['width'] = int(cell_width)
+                d['height'] = int(cell_height)
+                d['date'] = monthdates.next()
+                if not 'selected' in d:
+                    d['selected'] = False
                 x2 += cell_width
-                self.cells[column][row] = d
             y2 += cell_height
 
         self.update_cell_events()
