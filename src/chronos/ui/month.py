@@ -30,6 +30,8 @@ PADDING_DAY = 5
 PADDING_TITLE = 3
 PADDING_TITLE_LEFT = 8
 PADDING_EVENT = 3
+PADDING_START = 5
+PADDING_END = 5
 
 
 def roundedrect(ctx, x, y, w, h, r = 15, left=True, right=True):
@@ -338,11 +340,11 @@ class MonthView(gtk.DrawingArea):
 
                     if (event.start.as_date == date.as_date and
                         event.end.as_date == date.as_date):
-                        roundedrect(ctx, x+5, y3, cell_width-10, event_height, 8)
+                        roundedrect(ctx, x+PADDING_START, y3, cell_width-(PADDING_START+PADDING_END), event_height, 8)
                     elif event.start.as_date == date.as_date:
-                        roundedrect(ctx, x+5, y3, cell_width-4, event_height, 8, right=False)
+                        roundedrect(ctx, x+PADDING_START, y3, cell_width-(PADDING_START-1), event_height, 8, right=False)
                     elif event.end.as_date == date.as_date:
-                        roundedrect(ctx, x, y3, cell_width-5, event_height, 8, left=False)
+                        roundedrect(ctx, x, y3, cell_width-PADDING_END, event_height, 8, left=False)
                     else:
                         ctx.rectangle(x, y3, cell_width+1, event_height)
 
