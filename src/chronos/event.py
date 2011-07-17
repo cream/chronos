@@ -1,4 +1,5 @@
 from chronos.utils import datetime
+from datetime import timedelta
 
 class Event(object):
     """An internal representation of an event."""
@@ -21,6 +22,11 @@ class Event(object):
         if isinstance(end, (float, int)):
             self.end = datetime.fromtimestamp(end)
 
+        if (self.end.day - self.start.day == 1 and self.end.hour == 0 and
+            self.end.minute == 0 and self.end.second == 0):
+            # This is a single day event but actually spawns over 2 days
+            prev = self.end - timedelta(seconds=1)
+            self.end = datetime.from_datetime(prev)
 
     def __eq__(self, other):
 
