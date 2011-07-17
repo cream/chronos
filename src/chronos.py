@@ -64,9 +64,9 @@ class Chronos(cream.Module):
 
         removed_events = []
         for event in events:
-            removed_events.append(self.events.pop(uid))
+            removed_events.append(self.events.pop(event.uid))
 
-        self.calendar_ui.main_view.remove_events(removed_events)
+        self.calendar_ui.remove_events(removed_events)
 
 
     def update_events(self, events):
@@ -74,10 +74,10 @@ class Chronos(cream.Module):
         updated_events = []
         for event in events:
             event = Event(**event)
-            self.events[uid] = event
+            self.events[event.uid] = event
             updated_events.append(event)
 
-        self.calendar_ui.main_view.update_events(updated_events)
+        self.calendar_ui.update_events(updated_events)
 
 
     def add_calendar(self, uid, calendar):
