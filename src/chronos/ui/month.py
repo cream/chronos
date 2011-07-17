@@ -1,6 +1,7 @@
 import time
 import cairo
 import calendar
+from operator import itemgetter
 from collections import defaultdict
 
 from gi.repository import GObject as gobject, Gtk as gtk, Gdk as gdk
@@ -32,6 +33,8 @@ PADDING_TITLE_LEFT = 8
 PADDING_EVENT = 3
 PADDING_START = 5
 PADDING_END = 5
+
+EVENT_HEIGHT = 15
 
 
 def roundedrect(ctx, x, y, w, h, r = 15, left=True, right=True):
@@ -82,6 +85,7 @@ class MonthView(gtk.DrawingArea):
             self.cells.append([])
             for row in range(7):
                 self.cells[column].append({})
+
         self._events = {}
         self.grid_origin = (0, 0)
 
@@ -99,66 +103,41 @@ class MonthView(gtk.DrawingArea):
         Yields events in current month
         """
 
-        def event_larger_in_week(date, e1, e2):
-            weekstart = first_day_of_week(date)
-            weekend = last_day_of_week(date)
-
-            if e1.start < weekstart:
-                e1_start = weekstart
-            else:
-                e1_start = e1.start
-
-            if e1.end > weekend:
-                e1_end = weekend
-            else:
-                e1_end = e1.end
-
-            if e2.start < weekstart:
-                e2_start = weekstart
-            else:
-                e2_start = e2.start
-
-            if e2.end > weekend:
-                e2_end = weekend
-            else:
-                e2_end = e2.end
-
-            if e1_end - e1_start > e2_end - e2_start:
-                return True
-            return False
-
         def get_date_range(event):
             for date in iter_date_range(event.start, event.end):
                if date.year == self.date.year and date.month == self.date.month:
                     yield date
 
-        events = filter(lambda e: e.active, self._events.itervalues())
-
-        # map events to dates
         events_by_date = defaultdict(list)
-        for event in events:
-            for date in get_date_range(event):
-                events_by_date[date.as_date].append(event)
+        for event in self._events.itervalues():
+            if not event.active: continue
 
-        dates = defaultdict(list)
-        # calculate the position of a event for every row
-        for event in events:
-            event_pos = [0]
-            for date in get_date_range(event):
-                if date.first_day_of_week:
-                    event_pos.append(0)
-                for other_event in events_by_date[date.as_date]:
-                    if other_event == event:
-                        continue
-                    if not event_larger_in_week(date, event, other_event):
-                        event_pos[-1] += 1
-            row = 0
+            position = [0] # every value in this list is the position in each row the event spawns
+            dates = []
             for i, date in enumerate(get_date_range(event)):
                 if date.first_day_of_week and i != 0:
-                    row += 1
-                dates[date].append((event, event_pos[row]))
+                    for d in dates:
+                        events_by_date[d.as_date].append((event, position[-1]))
+                    position.append(0) # new row
+                    dates = []
+                dates.append(date)
+                other_events = filter(lambda e: e != event and event_on_date(e, date) and e.active, self._events.itervalues())
+                for j, other_event in enumerate(other_events):
 
-        return dates
+                    size_1, size_2 = rel_event_size_in_week(event, other_event, date)
+
+                    if size_1 == size_2:
+                        # if they are equally sized then sort after the title
+                        if event.title > other_event.title:
+                            position[-1] += 1
+                    elif size_1 < size_2:
+                        if position[-1] <= j:
+                            position[-1] += 1
+
+            for d in dates:
+                events_by_date[d.as_date].append((event, position[-1]))
+
+        return events_by_date
 
 
     def add_events(self, events):
@@ -191,16 +170,17 @@ class MonthView(gtk.DrawingArea):
 
         self.date = date
         self.calculate_cell_data()
+        self.update_cell_events()
         self.queue_draw()
 
 
     def update_cell_events(self):
 
-        events_by_date = self.events
+        events = self.events
         for row in self.cells:
             for cell in row:
                 if 'date' in cell:
-                    cell['events'] = events_by_date[cell['date']]
+                    cell['events'] = sorted(events[cell['date']], key=itemgetter(1))
 
 
     def calculate_cell_data(self):
@@ -222,7 +202,7 @@ class MonthView(gtk.DrawingArea):
             x2 = x
             for column in range(7):
                 d = self.cells[column][row]
-                d['x'] = x2
+                d['x'] = int(x2)
                 d['y'] = int(y2)
                 d['width'] = int(cell_width)
                 d['height'] = int(cell_height)
@@ -232,13 +212,12 @@ class MonthView(gtk.DrawingArea):
                 x2 += cell_width
             y2 += cell_height
 
-        self.update_cell_events()
-
 
     def button_press_cb(self, widget, event):
 
         x, y = event.x, event.y
 
+        should_redraw = False
         num_weeks = number_of_weeks(self.date.year, self.date.month)
         for column in range(7):
             for row in range(num_weeks):
@@ -292,12 +271,8 @@ class MonthView(gtk.DrawingArea):
         if self.grid_origin != (PADDING_LEFT, y + PADDING):
             self.grid_origin = (PADDING_LEFT, y + PADDING)
             self.calculate_cell_data()
-        self.grid_origin = (PADDING_LEFT, y + PADDING)
-
-        # calculate the maximal event height
-        event_height = 0
-        for events in self.events.values():
-            event_height = max(calculate_event_height(events[0][0], ctx), event_height)
+        else:
+            self.grid_origin = (PADDING_LEFT, y + PADDING)
 
         num_weeks = number_of_weeks(self.date.year, self.date.month)
         for column in range(7):
@@ -313,12 +288,12 @@ class MonthView(gtk.DrawingArea):
                 if date.month != self.date.month:
                     # Draw the day grey, it sucks!
                     ctx.set_source_rgba(0, 0, 0, 0.05)
-                    ctx.rectangle(x, y, cell_width, cell_height)
+                    ctx.rectangle(x, y, cell_width+1, cell_height+1)
                     ctx.fill()
 
                 if selected:
-                    ctx.set_source_rgba(0, 0, 0.1, 0.1)
-                    ctx.rectangle(x+1, y+1, cell_width, cell_height)
+                    ctx.set_source_rgba(0, 0, 0.5, 0.1)
+                    ctx.rectangle(x, y, cell_width+1, cell_height+1)
                     ctx.fill()
 
                 # Draw the day into the right upper corner
@@ -333,20 +308,20 @@ class MonthView(gtk.DrawingArea):
                 ctx.show_text(str(date.day))
 
                 # Draw events
-                for event, i in events:
+                for event, pos in events:
                     ctx.set_source_rgb(*event.color)
 
-                    y3 = int(y2 + PADDING_EVENT + i * (event_height + PADDING_EVENT))
+                    y3 = int(y2 + PADDING_EVENT + pos * (EVENT_HEIGHT + PADDING_EVENT))
 
                     if (event.start.as_date == date.as_date and
                         event.end.as_date == date.as_date):
-                        roundedrect(ctx, x+PADDING_START, y3, cell_width-(PADDING_START+PADDING_END), event_height, 8)
+                        roundedrect(ctx, x+PADDING_START, y3, cell_width-(PADDING_START+PADDING_END), EVENT_HEIGHT, 8)
                     elif event.start.as_date == date.as_date:
-                        roundedrect(ctx, x+PADDING_START, y3, cell_width-(PADDING_START-1), event_height, 8, right=False)
+                        roundedrect(ctx, x+PADDING_START, y3, cell_width-(PADDING_START-1), EVENT_HEIGHT, 8, right=False)
                     elif event.end.as_date == date.as_date:
-                        roundedrect(ctx, x, y3, cell_width-PADDING_END, event_height, 8, left=False)
+                        roundedrect(ctx, x, y3, cell_width-PADDING_END, EVENT_HEIGHT, 8, left=False)
                     else:
-                        ctx.rectangle(x, y3, cell_width+1, event_height)
+                        ctx.rectangle(x, y3, cell_width+1, EVENT_HEIGHT)
 
                     ctx.fill()
 
@@ -374,7 +349,6 @@ class MonthView(gtk.DrawingArea):
                     x2 = int(x + cell_width)
                     draw_line(ctx, x2, y, x2, height - PADDING_BOTTOM)
 
-
             # Draw bottom line
             if column == 0:
                 y = int(y + cell_height)
@@ -398,8 +372,8 @@ class MonthView(gtk.DrawingArea):
 
                 y2 = y + t_height + PADDING_DAY
 
-                for event, i in events:
-                    y3 = int(y2 + PADDING_EVENT + i * (event_height + PADDING_EVENT))
+                for event, pos in events:
+                    y3 = int(y2 + PADDING_EVENT + pos * (EVENT_HEIGHT + PADDING_EVENT))
                     if date == event.start.as_date or date.first_day_of_week:
                         space = calculate_remaining_space(event, date, cell_width)
 
@@ -413,32 +387,56 @@ class MonthView(gtk.DrawingArea):
                         ctx.show_text(title)
 
 
+def event_on_date(event, date):
+
+    for d in iter_date_range(event.start, event.end):
+        if d == date.as_date:
+            return True
+
+    return False
+
+
+def rel_event_size_in_week(event1, event2, date):
+    """
+    Returns the relative size of two events in the week containing date.
+    """
+
+    weekstart = first_day_of_week(date)
+    weekend = last_day_of_week(date)
+
+    if event1.start < weekstart:
+        event1_start = weekstart
+    else:
+        event1_start = event1.start
+
+    if event2.start < weekstart:
+        event2_start = weekstart
+    else:
+        event2_start = event2.start
+
+    if event1.end > weekend:
+        event1_end = weekend
+    else:
+        event1_end = event1.end
+
+    if event2.end > weekend:
+        event2_end = weekend
+    else:
+        event2_end = event2.end
+
+
+    if event1_start > event2_start:
+        start = event1_start
+    else:
+        start = event2_start
+
+
+    return (event1_end - start), (event2_end - start)
+
 
 def get_text_extents(ctx, text):
     return ctx.text_extents(text)[:4]
 
-
-def calculate_event_height(event, ctx):
-    """
-    Calculates the height for the event
-    """
-
-    return int(get_text_extents(ctx, event.title)[3] + 2*PADDING_TITLE)
-
-
-def calculate_y_coords(event, dates, height):
-    """
-    Calculates the y position of the event for each row.
-    """
-
-    y = [0]
-    for date in dates:
-        if date.first_day_of_week and date != dates[0]:
-            y.append(0)
-        position = date.position_of_event(event)
-        y[-1] = max(y[-1], date.y + position*height + PADDING_EVENT*position)
-
-    return y
 
 def in_rect(x, y, x0, y0, w, h):
     """
@@ -450,9 +448,9 @@ def calculate_remaining_space(event, date, width):
     """
     Returns the remaining space for the event title for the row which contains date
     """
-
     start = first_day_of_week(date)
     end = last_day_of_week(date)
+
     if event.start.as_date == end.as_date:
         return width
 

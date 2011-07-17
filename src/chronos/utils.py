@@ -80,7 +80,6 @@ class datetime(_datetime.datetime):
 
     @property
     def next_day(self):
-
         next = self + _datetime.timedelta(1)
         return datetime.from_datetime(next)
 
