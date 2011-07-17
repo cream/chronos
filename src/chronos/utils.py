@@ -124,9 +124,6 @@ def last_day_of_week(date):
     return datetime.from_datetime(last)
 
 
-
-
-
 def number_of_weeks(year, month):
     """Returns the number of weeks the given month has."""
     return len(calendar.Calendar().monthdatescalendar(year, month))
