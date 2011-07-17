@@ -378,27 +378,37 @@ class MonthView(gtk.DrawingArea):
                 y = int(y + cell_height)
                 draw_line(ctx, x, y, width - PADDING_RIGHT, y)
 
+
+        # Draw event titles
+        ctx.select_font_face(*FONT_NORMAL)
+        ctx.set_font_size(FONT_SIZE_DAY)
+        ctx.set_source_rgb(0, 0, 0)
+
         for column in range(7):
             for row in range(num_weeks):
                 x = self.cells[column][row]['x']
                 y = self.cells[column][row]['y']
+                cell_width = self.cells[column][row]['width']
                 date = self.cells[column][row]['date']
                 events = self.cells[column][row]['events']
 
-                ctx.select_font_face(*FONT_NORMAL)
-                ctx.set_font_size(FONT_SIZE_DAY)
-
-                _, _,_, t_height = get_text_extents(ctx, str(date.day))
+                t_height = get_text_extents(ctx, str(date.day))[3]
 
                 y2 = y + t_height + PADDING_DAY
 
-                # Draw event titles
-                ctx.set_source_rgb(0, 0, 0)
                 for event, i in events:
                     y3 = int(y2 + PADDING_EVENT + i * (event_height + PADDING_EVENT))
                     if date == event.start.as_date or date.first_day_of_week:
+                        space = calculate_remaining_space(event, date, cell_width)
+
+                        title = event.title
+                        t_width = get_text_extents(ctx, title)[2]
+                        while t_width > space:
+                            title = title[:-1]
+                            t_width = get_text_extents(ctx, title)[2]
+
                         ctx.move_to(x + PADDING_TITLE_LEFT, y3 + 11)
-                        ctx.show_text(event.title)
+                        ctx.show_text(title)
 
 
 
@@ -433,3 +443,29 @@ def in_rect(x, y, x0, y0, w, h):
     Returns if x and y are in the rectangle specified by x0, y0, w, h
     """
     return x > x0 and x < x0 + w and y > y0 and y < y0 + h
+
+def calculate_remaining_space(event, date, width):
+    """
+    Returns the remaining space for the event title for the row which contains date
+    """
+
+    start = first_day_of_week(date)
+    end = last_day_of_week(date)
+    if event.start.as_date == end.as_date:
+        return width
+
+    if event.start.as_date > start.as_date:
+        start = event.start
+    else:
+        width -= 2*PADDING_START
+    if event.end.as_date < end:
+        end = event.end
+    else:
+        width -= PADDING_END
+
+    width -= PADDING_TITLE_LEFT
+
+    remaining_space = 0
+    for date in iter_date_range(start, end):
+        remaining_space += width
+    return remaining_space
