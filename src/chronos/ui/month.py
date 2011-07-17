@@ -379,7 +379,7 @@ class MonthView(gtk.DrawingArea):
 
                         title = event.title
                         t_width = get_text_extents(ctx, title)[2]
-                        while t_width > space:
+                        while t_width > space and len(title) > 1:
                             title = title[:-1]
                             t_width = get_text_extents(ctx, title)[2]
 
