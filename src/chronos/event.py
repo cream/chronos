@@ -16,8 +16,6 @@ class Event(object):
         self.color = color
         self.active = active
 
-        self.positions = [0] * 7
-
         if isinstance(start, (float, int)):
             self.start = datetime.fromtimestamp(start)
         if isinstance(end, (float, int)):
